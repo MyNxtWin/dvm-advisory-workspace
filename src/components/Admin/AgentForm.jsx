@@ -1,7 +1,28 @@
 import React, { useState, useEffect } from 'react'
 import './Admin.css'
 
-const EMPTY = { id: '', name: '', shortName: '', desc: '', icon: '', systemPrompt: '', chips: '', order: 99 }
+const MODELS = [
+  {
+    id: 'claude-haiku-4-5-20251001',
+    label: 'Haiku 4.5',
+    badge: '⚡ Fast',
+    desc: 'Quick Q&A, summaries, high-volume lookups. Most cost-effective.',
+  },
+  {
+    id: 'claude-sonnet-4-6',
+    label: 'Sonnet 4.6',
+    badge: '⚖️ Balanced',
+    desc: 'Better reasoning and nuance. Good for complex analysis and structured responses.',
+  },
+  {
+    id: 'claude-opus-4-8',
+    label: 'Opus 4.8',
+    badge: '🧠 Powerful',
+    desc: 'Most capable. Best for deep legal analysis and multi-step compliance work.',
+  },
+]
+
+const EMPTY = { id: '', name: '', shortName: '', desc: '', icon: '', systemPrompt: '', chips: '', order: 99, model: 'claude-haiku-4-5-20251001' }
 
 export default function AgentForm({ agent, onSave, onClose, saving }) {
   const [form, setForm] = useState(EMPTY)
@@ -20,7 +41,7 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!form.id || !form.name || !form.systemPrompt) return
+    if (!form.id || !form.name || !form.systemPrompt || !form.model?.trim()) return
     const payload = {
       ...form,
       chips: form.chips.split('\n').map(s => s.trim()).filter(Boolean),
@@ -79,6 +100,54 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
             <div className="form-hint">These appear as quick-start prompts on the chat welcome screen. One per line.</div>
           </div>
           <div className="form-row">
+            <label>AI Model</label>
+            <div className="model-picker">
+              {MODELS.map(m => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`model-option${form.model === m.id ? ' selected' : ''}`}
+                  onClick={() => set('model', m.id)}
+                >
+                  <div className="model-option-top">
+                    <span className="model-label">{m.label}</span>
+                    <span className="model-badge">{m.badge}</span>
+                  </div>
+                  <div className="model-desc">{m.desc}</div>
+                </button>
+              ))}
+              <button
+                type="button"
+                className={`model-option${!MODELS.some(m => m.id === form.model) ? ' selected' : ''}`}
+                onClick={() => { if (MODELS.some(m => m.id === form.model)) set('model', '') }}
+              >
+                <div className="model-option-top">
+                  <span className="model-label">Custom</span>
+                  <span className="model-badge">✏️ Any</span>
+                </div>
+                <div className="model-desc">Use any model ID — for new releases not listed here.</div>
+              </button>
+            </div>
+            {!MODELS.some(m => m.id === form.model) && (
+              <div style={{ marginTop: 8 }}>
+                <input
+                  className="form-input"
+                  placeholder="e.g. claude-sonnet-4-7"
+                  value={form.model}
+                  onChange={e => set('model', e.target.value.trim())}
+                  autoFocus
+                />
+                <div className="form-hint">
+                  Find all model IDs at{' '}
+                  <a href="https://docs.anthropic.com/en/docs/about-claude/models/overview" target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>
+                    docs.anthropic.com → Models overview
+                  </a>
+                  . Format: <code style={{ fontFamily: 'monospace', fontSize: 11 }}>claude-[name]-[version]</code>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="form-row">
             <label>System Prompt *</label>
             <textarea
               className="form-textarea"
@@ -91,7 +160,7 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
           </div>
           <div className="form-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving || !form.id || !form.name || !form.systemPrompt}>
+            <button type="submit" className="btn btn-primary" disabled={saving || !form.id || !form.name || !form.systemPrompt || !form.model?.trim()}>
               {saving ? 'Saving…' : (isEdit ? 'Save changes' : 'Create agent')}
             </button>
           </div>

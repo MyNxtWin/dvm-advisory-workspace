@@ -1,6 +1,8 @@
 const { verifySession, isAdmin, corsHeaders } = require('./_auth')
 
 const GITHUB_API = 'https://api.github.com'
+const AGENT_ID_RE = /^[a-z0-9_-]+$/
+const FIELD_LIMITS = { name: 100, desc: 500, shortName: 60, icon: 8, systemPrompt: 32768 }
 
 function ghHeaders() {
   return {
@@ -16,7 +18,10 @@ function fileUrl() {
 
 async function fetchFile() {
   const res = await fetch(fileUrl(), { headers: ghHeaders() })
-  if (!res.ok) throw new Error('Could not fetch agents file from GitHub: ' + await res.text())
+  if (!res.ok) {
+    console.error('agents-manage: GitHub fetch failed:', await res.text())
+    throw new Error('Could not load agents from storage.')
+  }
   const data = await res.json()
   return {
     sha: data.sha,
@@ -34,7 +39,10 @@ async function commitFile(agents, sha, message) {
       content: Buffer.from(JSON.stringify(agents, null, 2) + '\n').toString('base64'),
     }),
   })
-  if (!res.ok) throw new Error('Could not commit agents file: ' + await res.text())
+  if (!res.ok) {
+    console.error('agents-manage: GitHub commit failed:', await res.text())
+    throw new Error('Could not save agents to storage.')
+  }
 }
 
 exports.handler = async (event) => {
@@ -55,7 +63,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    if (event.httpMethod === 'GET') {
+    if (event.httpMethod === 'POST' && body.action === 'list') {
       const { agents } = await fetchFile()
       return { statusCode: 200, headers, body: JSON.stringify({ agents }) }
     }
@@ -65,12 +73,34 @@ exports.handler = async (event) => {
       if (!agent?.id || !agent?.name || !agent?.systemPrompt) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'id, name, and systemPrompt are required.' }) }
       }
-      if (!/^[a-z0-9_-]+$/.test(agent.id)) {
+      if (!AGENT_ID_RE.test(agent.id)) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'id must be lowercase alphanumeric with hyphens/underscores only.' }) }
       }
+
+      // Enforce field length limits
+      for (const [field, max] of Object.entries(FIELD_LIMITS)) {
+        if (agent[field] && String(agent[field]).length > max) {
+          return { statusCode: 400, headers, body: JSON.stringify({ error: `${field} exceeds maximum length of ${max} characters.` }) }
+        }
+      }
+
       const { sha, agents } = await fetchFile()
       const existing = agents.findIndex(a => a.id === agent.id)
-      const updated = { ...agent, updatedAt: new Date().toISOString() }
+
+      // Pick only known safe fields — never spread the full client body
+      const updated = {
+        id: agent.id,
+        name: agent.name,
+        shortName: agent.shortName || '',
+        desc: agent.desc || '',
+        icon: agent.icon || '',
+        model: agent.model || 'claude-haiku-4-5-20251001',
+        order: typeof agent.order === 'number' ? agent.order : 99,
+        chips: Array.isArray(agent.chips) ? agent.chips.slice(0, 20) : [],
+        systemPrompt: agent.systemPrompt,
+        updatedAt: new Date().toISOString(),
+      }
+
       if (existing >= 0) {
         agents[existing] = updated
       } else {
@@ -83,7 +113,9 @@ exports.handler = async (event) => {
 
     if (event.httpMethod === 'DELETE') {
       const { agentId } = body
-      if (!agentId) return { statusCode: 400, headers, body: JSON.stringify({ error: 'agentId required.' }) }
+      if (!agentId || !AGENT_ID_RE.test(agentId)) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Valid agentId required.' }) }
+      }
       const { sha, agents } = await fetchFile()
       const filtered = agents.filter(a => a.id !== agentId)
       await commitFile(filtered, sha, `agent: remove ${agentId}`)

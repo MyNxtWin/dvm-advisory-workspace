@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
 import './Chat.css'
 
 export default function MessageList({ messages, agent, isLoading, onChipClick }) {
@@ -44,7 +45,11 @@ export default function MessageList({ messages, agent, isLoading, onChipClick })
           {msg.role === 'assistant' && (
             <div className="msg-avatar">{agent.icon || '🤖'}</div>
           )}
-          <div className="msg-bubble">{msg.content}</div>
+          <div className="msg-bubble">
+            {msg.role === 'assistant'
+              ? <ReactMarkdown>{msg.content}</ReactMarkdown>
+              : msg.content}
+          </div>
         </div>
       ))}
       {isLoading && (

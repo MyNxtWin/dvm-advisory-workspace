@@ -1,5 +1,8 @@
 const crypto = require('crypto')
 
+// Fail hard at cold-start if OTP_SECRET is missing — don't let functions boot with a guessable key
+if (!process.env.OTP_SECRET) throw new Error('OTP_SECRET env var is not set')
+
 function hmac(data) {
   return crypto.createHmac('sha256', process.env.OTP_SECRET).update(data).digest('hex')
 }
@@ -40,20 +43,14 @@ function getAllowedDomains() {
 
 function corsHeaders(event) {
   const origin = event.headers.origin || event.headers.Origin || ''
-  const siteUrl = process.env.SITE_URL || ''
-  const allowOrigin = (siteUrl && origin === siteUrl) ? origin : (siteUrl || '*')
+  const siteUrl = (process.env.SITE_URL || '').replace(/\/$/, '')
+  // Only echo the origin back if it exactly matches SITE_URL — never fall back to wildcard
+  const allowOrigin = (siteUrl && origin === siteUrl) ? origin : siteUrl
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, GET, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
   }
 }
 
-function authFromEvent(event) {
-  try {
-    const body = JSON.parse(event.body || '{}')
-    return { email: body.email, sessionToken: body.sessionToken, sessionExpiry: body.sessionExpiry }
-  } catch { return {} }
-}
-
-module.exports = { signOtp, verifyOtpToken, signSession, verifySession, isAdmin, getAllowedDomains, corsHeaders, authFromEvent }
+module.exports = { signOtp, verifyOtpToken, signSession, verifySession, isAdmin, getAllowedDomains, corsHeaders }

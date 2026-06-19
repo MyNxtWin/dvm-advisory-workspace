@@ -1,6 +1,12 @@
 import React from 'react'
 import './Admin.css'
 
+const MODEL_LABELS = {
+  'claude-haiku-4-5-20251001': '⚡ Haiku 4.5',
+  'claude-sonnet-4-6': '⚖️ Sonnet 4.6',
+  'claude-opus-4-8': '🧠 Opus 4.8',
+}
+
 export default function AgentCard({ agent, onEdit, onDelete }) {
   return (
     <div className="agent-card">
@@ -9,6 +15,9 @@ export default function AgentCard({ agent, onEdit, onDelete }) {
         <div>
           <div className="agent-card-name">{agent.name}</div>
           <div className="agent-card-id">id: {agent.id}</div>
+          {agent.model && (
+            <span className="agent-card-model">{MODEL_LABELS[agent.model] || agent.model}</span>
+          )}
         </div>
       </div>
       <div className="agent-card-desc">{agent.desc}</div>

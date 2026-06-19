@@ -1,6 +1,7 @@
 const crypto = require('crypto')
 const { signOtp, getAllowedDomains, corsHeaders } = require('./_auth')
 
+// In-memory rate limit — 3 OTP requests per email per 15 minutes
 const RATE_STORE = {}
 
 function checkRate(email) {
@@ -13,6 +14,9 @@ function checkRate(email) {
   return true
 }
 
+// RFC 5321: max 254 chars; basic structure check
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,189}\.[^\s@]{1,63}$/
+
 exports.handler = async (event) => {
   const cors = corsHeaders(event)
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' }
@@ -22,9 +26,12 @@ exports.handler = async (event) => {
 
   try {
     const { email } = JSON.parse(event.body || '{}')
-    if (!email || !email.includes('@')) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Valid email required' }) }
 
-    const domain = email.split('@')[1]?.toLowerCase()
+    if (!email || typeof email !== 'string' || email.length > 254 || !EMAIL_RE.test(email)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Valid email required.' }) }
+    }
+
+    const domain = email.split('@')[1].toLowerCase()
     const allowed = getAllowedDomains()
     if (allowed.length > 0 && !allowed.includes(domain)) {
       return { statusCode: 403, headers, body: JSON.stringify({ error: 'Access restricted to authorised email domains.' }) }
@@ -49,7 +56,7 @@ exports.handler = async (event) => {
       }),
     })
 
-    if (!emailRes.ok) throw new Error('Email delivery failed: ' + await emailRes.text())
+    if (!emailRes.ok) throw new Error('Email delivery failed')
 
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, token, expiry }) }
   } catch (err) {

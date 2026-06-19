@@ -35,7 +35,7 @@ export default function AdminPanel() {
 
   async function load() {
     try {
-      const data = await call('GET', {})
+      const data = await call('POST', { action: 'list' })
       if (data) setAllAgents(data.agents || [])
     } catch (e) {
       setMsg('Failed to load agents: ' + e.message)

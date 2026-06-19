@@ -63,10 +63,9 @@ export function useAuth() {
         email: data.email,
         sessionToken: data.sessionToken,
         sessionExpiry: data.sessionExpiry,
+        isAdmin: data.isAdmin, // UI hint only — backend verifies on every admin operation
       }
       sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
-      // isAdmin lives in memory only — tamper-proof across page loads via backend verification
-      session.isAdmin = data.isAdmin
       otpRef.current = null
       setUser(session)
     } catch (e) {

@@ -1,9 +1,16 @@
 .chat-area {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
   background: var(--surface-2);
+}
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .chat-header {
@@ -111,8 +118,44 @@
   30% { transform: translateY(-5px); }
 }
 
+/* @mention dropdown */
+.mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 1.5rem;
+  right: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 4px;
+}
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink);
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.mention-item:hover { background: var(--accent-light); }
+.mention-name { font-weight: 500; }
+.mention-sub { color: var(--ink-3); font-size: 12px; }
+
 /* Input */
 .input-bar {
+  position: relative;
   background: var(--surface);
   border-top: 1px solid var(--line);
   padding: 12px 1.5rem;
@@ -152,3 +195,24 @@
 }
 .send-btn:hover:not(:disabled) { background: var(--accent-mid); }
 .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Markdown rendering */
+.msg-bubble h1,.msg-bubble h2,.msg-bubble h3 { font-family: Georgia,serif; margin: 1em 0 0.4em; line-height: 1.3; }
+.msg-bubble h1 { font-size: 1.2em; }
+.msg-bubble h2 { font-size: 1.05em; }
+.msg-bubble h3 { font-size: 0.97em; }
+.msg-bubble p { margin: 0.5em 0; line-height: 1.65; }
+.msg-bubble p:first-child { margin-top: 0; }
+.msg-bubble p:last-child { margin-bottom: 0; }
+.msg-bubble ul,.msg-bubble ol { margin: 0.4em 0 0.4em 1.4em; padding: 0; }
+.msg-bubble li { margin: 0.25em 0; line-height: 1.6; }
+.msg-bubble li p { margin: 0; }
+.msg-bubble strong { font-weight: 700; }
+.msg-bubble em { font-style: italic; }
+.msg-bubble hr { border: none; border-top: 1px solid var(--line); margin: 0.75em 0; }
+.msg-bubble table { border-collapse: collapse; width: 100%; margin: 0.75em 0; font-size: 13px; }
+.msg-bubble th { background: var(--surface-2); font-weight: 600; text-align: left; padding: 7px 10px; border: 1px solid var(--line); }
+.msg-bubble td { padding: 6px 10px; border: 1px solid var(--line); vertical-align: top; }
+.msg-bubble code { font-family: monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+.msg-bubble pre { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; overflow-x: auto; margin: 0.5em 0; }
+.msg-bubble pre code { background: none; padding: 0; }
