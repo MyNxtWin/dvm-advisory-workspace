@@ -1,54 +1,33 @@
-// NOTE: In serverless environments, each function invocation may run in a fresh context.
-// For production reliability, use a persistent store (Netlify Blobs, Upstash Redis, or FaunaDB).
-// The implementation below works for low-traffic/demo use — see README for production upgrade path.
-
-const crypto = require('crypto');
-
-// Shared in-memory store — works within the same warm Lambda instance
-// Replace with external KV store for production (see README)
-const OTP_STORE = global.__DVM_OTP_STORE || (global.__DVM_OTP_STORE = {});
+const { verifyOtpToken, signSession, isAdmin, corsHeaders } = require('./_auth')
 
 exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
-  }
+  const cors = corsHeaders(event)
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' }
+  if (event.httpMethod !== 'POST') return { statusCode: 405, headers: cors, body: JSON.stringify({ error: 'Method not allowed' }) }
 
-  const headers = { 'Content-Type': 'application/json' };
+  const headers = { ...cors, 'Content-Type': 'application/json' }
 
   try {
-    const { email, code } = JSON.parse(event.body);
-    if (!email || !code) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Email and code required' }) };
+    const { email, code, token, expiry } = JSON.parse(event.body || '{}')
+
+    if (!email || !code || !token || !expiry) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing required fields.' }) }
     }
 
-    const key = email.toLowerCase();
-    const record = OTP_STORE[key];
-
-    if (!record) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'No code found. Please request a new one.' }) };
+    if (!verifyOtpToken(email, code, token, expiry)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Incorrect or expired code. Please try again.' }) }
     }
 
-    if (Date.now() > record.expires) {
-      delete OTP_STORE[key];
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Code has expired. Please request a new one.' }) };
+    const sessionExpiry = Math.floor(Date.now() / 1000) + 8 * 3600
+    const sessionToken = signSession(email, sessionExpiry)
+    const admin = isAdmin(email)
+
+    return {
+      statusCode: 200, headers,
+      body: JSON.stringify({ success: true, email, sessionToken, sessionExpiry, isAdmin: admin }),
     }
-
-    // Timing-safe comparison
-    const valid = crypto.timingSafeEqual(
-      Buffer.from(record.otp),
-      Buffer.from(code.trim())
-    );
-
-    if (!valid) {
-      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Incorrect code. Please try again.' }) };
-    }
-
-    // Valid — clear the OTP
-    delete OTP_STORE[key];
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, email }) };
-
   } catch (err) {
-    console.error('Verify OTP error:', err);
-    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Verification failed. Please try again.' }) };
+    console.error('verify-otp:', err.message)
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Verification failed. Please try again.' }) }
   }
-};
+}

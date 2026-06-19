@@ -1,113 +1,96 @@
-# DVM Advisory Workspace — Setup Guide
+# DVM Advisory Workspace
 
-A private AI workspace with two agents (DVM Compliance + Board Governance), email OTP login, and multi-domain access control. Hosted entirely on Netlify — no servers needed.
-
----
-
-## What's included
-
-- `index.html` — the full frontend application
-- `netlify/functions/chat.js` — calls the Anthropic API with the agent's system prompt
-- `netlify/functions/send-otp.js` — sends a 6-digit OTP via SendGrid
-- `netlify/functions/verify-otp.js` — verifies the OTP and signs the user in
-- `netlify.toml` — Netlify build and security configuration
+A private AI workspace for MyNxtWin — email OTP login, per-domain access control, admin panel to create and manage agents, deployed entirely on Netlify (no external database needed).
 
 ---
 
-## Step 1 — Configure your allowed domains
+## Architecture at a glance
 
-Open `index.html` and find this line near the top of the `<script>` section:
-
-```js
-const ALLOWED_DOMAINS = ['yourdomain.com', 'yourfirm2.com'];
+```
+Browser (React + Vite)
+    │
+    ├── /.netlify/functions/send-otp      — rate-limited, domain-checked OTP via Resend
+    ├── /.netlify/functions/verify-otp    — HMAC verify → issues 8-hour session token
+    ├── /.netlify/functions/agents-list   — session-gated, returns agent metadata (no system prompts)
+    ├── /.netlify/functions/agents-manage — admin-only CRUD, stores agents in Netlify Blobs
+    └── /.netlify/functions/chat          — session-gated, loads system prompt from Blobs, calls Anthropic
 ```
 
-Replace with your actual company email domains. Only users with these domains can log in.
+Agent data (including system prompts) lives entirely in **Netlify Blobs** — no GitHub token, no external DB, no CMS needed. The admin panel is the CMS.
 
 ---
 
-## Step 2 — Get your API keys
+## Step 1 — Get your API keys
 
-You need two:
+**Anthropic** — `console.anthropic.com` → API Keys → Create key
 
-**Anthropic API key**
-- Go to console.anthropic.com → API Keys → Create key
-- Keep this private — never paste it in the frontend code
+**Resend** (free OTP email, 3,000/month) — `resend.com` → API Keys → Create key
+- Also add and verify your sending domain in Resend → Domains
 
-**SendGrid API key** (for sending OTP emails)
-- Go to sendgrid.com → Settings → API Keys → Create key
-- Choose "Restricted Access" → Mail Send → Full Access
-- Also verify your sender email address in SendGrid (Settings → Sender Authentication)
+---
+
+## Step 2 — Create `.env`
+
+Copy `.env.example` to `.env` and fill in all values:
+
+```bash
+cp .env.example .env
+```
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+RESEND_API_KEY=re_...
+FROM_EMAIL=DVM Advisory <noreply@yourdomain.com>
+OTP_SECRET=                  # openssl rand -hex 32
+ALLOWED_DOMAINS=mynxtwin.com
+ADMIN_EMAILS=technology@mynxtwin.com
+SITE_URL=                    # blank locally, set in Netlify for production
+```
+
+Never commit `.env` to git — it's in `.gitignore`.
 
 ---
 
 ## Step 3 — Deploy to Netlify
 
-1. Create a new repository on GitHub and push this entire folder to it
-2. Go to netlify.com → Add new site → Import from GitHub → select your repo
-3. Build settings are auto-detected from `netlify.toml` — no changes needed
-4. Click **Deploy site**
+1. Push this repo to GitHub
+2. `netlify.com` → Add new site → Import from GitHub → select the repo
+3. Build settings are auto-detected from `netlify.toml`
+4. Go to **Site configuration → Environment variables** and add all seven vars from above
+5. **Deploys → Trigger deploy**
 
 ---
 
-## Step 4 — Add environment variables in Netlify
+## Step 4 — Add agents via the admin panel
 
-Go to your Netlify site → **Site configuration → Environment variables → Add variable**
+Once deployed:
+1. Log in with an email listed in `ADMIN_EMAILS`
+2. Go to `/admin`
+3. Click **New Agent** → fill in the form (id, name, system prompt, chips, etc.)
+4. Save — the agent appears in the workspace immediately
 
-Add these three:
+No redeployment needed. Agents are stored in Netlify Blobs and loaded at runtime.
 
-| Key | Value |
+---
+
+## Environment variables reference
+
+| Variable | Description |
 |---|---|
-| `ANTHROPIC_API_KEY` | Your Anthropic API key |
-| `SENDGRID_API_KEY` | Your SendGrid API key |
-| `FROM_EMAIL` | The verified sender email (e.g. dvm@yourfirm.com) |
-
-After adding, go to **Deploys → Trigger deploy** so the variables take effect.
-
----
-
-## Step 5 — Test
-
-1. Open your Netlify URL (e.g. `https://dvm-advisory.netlify.app`)
-2. Enter your work email → receive OTP → sign in
-3. Try both agents — ask a compliance question to DVM, and ask Board Governance to draft an agenda
-
----
-
-## Adding more agents later
-
-Open `index.html` and find the `AGENTS` object. Copy the structure of an existing agent, give it a new key, and add a button in the sidebar HTML. The system prompt lives entirely in that object — no backend changes needed.
-
----
-
-## Production upgrade — persistent OTP store
-
-The default OTP store uses Node.js global memory, which works for small teams but can lose codes if Netlify spins up multiple function instances simultaneously.
-
-For a more robust setup, replace the in-memory store with **Upstash Redis** (free tier available):
-
-1. Create a free Redis database at upstash.com
-2. Add `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to Netlify environment variables
-3. In both OTP functions, replace the `OTP_STORE` object with Redis SET/GET/DEL calls using the Upstash REST API
-
-This is a one-hour upgrade and makes the login bullet-proof at any scale.
+| `ANTHROPIC_API_KEY` | Anthropic API key — never touches the browser |
+| `RESEND_API_KEY` | Resend key for OTP email delivery |
+| `FROM_EMAIL` | Sender shown in OTP email — must be a verified Resend domain |
+| `OTP_SECRET` | HMAC signing key for OTP + session tokens — generate with `openssl rand -hex 32` |
+| `ALLOWED_DOMAINS` | Comma-separated domains allowed to log in, e.g. `mynxtwin.com` |
+| `ADMIN_EMAILS` | Comma-separated emails with admin panel access |
+| `SITE_URL` | Your Netlify URL — locks CORS to your domain. Leave blank locally. |
 
 ---
 
 ## Security notes
 
-- Your Anthropic API key never touches the browser — it lives only in Netlify's environment
-- OTP codes expire in 10 minutes and are deleted after one use
-- Domain restriction is enforced on both frontend and backend
-- All traffic is HTTPS — enforced by Netlify
-
----
-
-## Cost estimate (small team of 10-20 users)
-
-| Service | Cost |
-|---|---|
-| Netlify hosting + functions | Free tier (125k function calls/month) |
-| Anthropic API | ~$5–15/month depending on usage |
-| SendGrid | Free tier (100 emails/day) |
-| **Total** | **~$5–15/month** |
+- OTP tokens are HMAC-signed server-side — never stored anywhere, expire in 10 minutes
+- Session tokens are HMAC-signed, 8-hour expiry, verified on every backend call
+- Admin status is verified server-side on every admin operation — cannot be faked from the browser
+- System prompts never leave the server — only metadata is sent to the frontend
+- CORS is locked to `SITE_URL` in production
