@@ -47,7 +47,7 @@ export function useFiles() {
       if (!category) { errs.push(`${file.name}: unsupported type`); continue }
       try {
         const data = category === 'text' ? await readAsText(file) : await readAsBase64(file)
-        added.push({ id: uid(), name: file.name, mimeType: file.type, category, data, size: file.size })
+        added.push({ id: uid(), name: file.name, mimeType: file.type, category, data, size: file.size, pinned: false })
       } catch {
         errs.push(`${file.name}: failed to read`)
       }
@@ -63,16 +63,25 @@ export function useFiles() {
     setFiles(prev => prev.filter(f => f.id !== id))
   }
 
+  function togglePin(id) {
+    setFiles(prev => prev.map(f => f.id === id ? { ...f, pinned: !f.pinned } : f))
+  }
+
+  // Returns files to attach: always includes pinned + any @mentioned unpinned files
   function resolveFromText(text) {
-    if (!files.length || !text) return []
+    const pinned = files.filter(f => f.pinned)
+    if (!files.length || !text) return pinned
     const lower = text.toLowerCase()
     if (lower.includes('@all')) return files
-    return files.filter(f => {
+    const pinnedIds = new Set(pinned.map(f => f.id))
+    const mentioned = files.filter(f => {
+      if (pinnedIds.has(f.id)) return false
       const n = f.name.toLowerCase()
       const noExt = n.replace(/\.[^.]+$/, '')
       return lower.includes(`@${n}`) || lower.includes(`@${noExt}`)
     })
+    return [...pinned, ...mentioned]
   }
 
-  return { files, uploadError, addFiles, removeFile, resolveFromText }
+  return { files, uploadError, addFiles, removeFile, togglePin, resolveFromText }
 }

@@ -1,6 +1,22 @@
 import React, { useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import './Chat.css'
+
+const MD_COMPONENTS = {
+  // Tables: wrap in scrollable container so they never overflow the bubble
+  table: ({ children }) => (
+    <div className="md-table-wrap">
+      <table>{children}</table>
+    </div>
+  ),
+  // Code blocks: scrollable, monospace
+  pre: ({ children }) => (
+    <div className="md-pre-wrap">
+      <pre>{children}</pre>
+    </div>
+  ),
+}
 
 export default function MessageList({ messages, agent, isLoading, onChipClick }) {
   const bottomRef = useRef(null)
@@ -47,7 +63,14 @@ export default function MessageList({ messages, agent, isLoading, onChipClick })
           )}
           <div className="msg-bubble">
             {msg.role === 'assistant'
-              ? <ReactMarkdown>{msg.content}</ReactMarkdown>
+              ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={MD_COMPONENTS}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              )
               : msg.content}
           </div>
         </div>

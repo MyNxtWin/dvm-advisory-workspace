@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
 import './Layout.css'
 
-export default function Header() {
+export default function Header({ onMenuClick }) {
   const { auth } = useApp()
   const { user } = auth
   const location = useLocation()
@@ -12,6 +12,7 @@ export default function Header() {
   return (
     <header className="app-header">
       <div className="header-left">
+        <button className="sidebar-toggle" onClick={onMenuClick} aria-label="Toggle sidebar">☰</button>
         <div className="header-logo">DVM</div>
         <span className="header-title">Advisory Workspace</span>
       </div>
