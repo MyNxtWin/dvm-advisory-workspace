@@ -14,17 +14,5 @@
     ],
     "order": 0,
     "updatedAt": "2026-06-19T10:29:30.400Z"
-  },
-  {
-    "id": "test_agent",
-    "name": "Test Agent",
-    "shortName": "Test",
-    "desc": "Temporary agent for   testing the  create/delete   flow.",
-    "icon": "",
-    "model": "claude-sonnet-4-6",
-    "order": 2,
-    "chips": [],
-    "systemPrompt": "You are a test agent.\n  Respond to every  message\n  with: \"Test  agent working \n  correctly.\" followed by  a\n  one-line echo of  what the\n  user said.",
-    "updatedAt": "2026-06-19T20:14:40.474Z"
   }
 ]
