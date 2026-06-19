@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DVM Advisory — AI Workspace</title>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink: #1a1a1a;
+    --ink-2: #4a4a4a;
+    --ink-3: #8a8a8a;
+    --line: #e8e8e4;
+    --line-2: #f0f0ec;
+    --surface: #ffffff;
+    --surface-2: #f8f8f6;
+    --surface-3: #f2f2ef;
+    --accent: #1a3a5c;
+    --accent-light: #e8eff7;
+    --accent-mid: #2d5a8e;
+    --gold: #c4913a;
+    --gold-light: #fdf5e8;
+    --success: #2d6a4f;
+    --danger: #c0392b;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 24px rgba(0,0,0,0.10);
+  }
+
+  body {
+    font-family: 'Georgia', serif;
+    background: var(--surface-2);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── AUTH SCREEN ── */
+  #auth-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 3rem 2.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: var(--shadow-lg);
+    text-align: center;
+  }
+
+  .auth-logo {
+    width: 52px;
+    height: 52px;
+    background: var(--accent);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: white;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    font-family: 'Georgia', serif;
+  }
+
+  .auth-card h1 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+    margin-bottom: 0.4rem;
+  }
+
+  .auth-card p {
+    font-size: 14px;
+    color: var(--ink-3);
+    margin-bottom: 2rem;
+    font-family: -apple-system, sans-serif;
+    line-height: 1.5;
+  }
+
+  .auth-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-family: -apple-system, sans-serif;
+    color: var(--ink);
+    background: var(--surface);
+    margin-bottom: 10px;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+
+  .auth-input:focus { border-color: var(--accent); }
+
+  .btn-primary {
+    width: 100%;
+    padding: 11px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-family: -apple-system, sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-primary:hover { background: var(--accent-mid); }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 1.2rem 0;
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: -apple-system, sans-serif;
+  }
+
+  .auth-divider::before, .auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
+
+  .otp-inputs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 10px;
+  }
+
+  .otp-input {
+    width: 44px;
+    height: 50px;
+    text-align: center;
+    font-size: 20px;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    font-family: -apple-system, sans-serif;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .otp-input:focus { border-color: var(--accent); }
+
+  .auth-back {
+    background: none;
+    border: none;
+    color: var(--ink-3);
+    font-size: 13px;
+    font-family: -apple-system, sans-serif;
+    cursor: pointer;
+    margin-top: 1rem;
+    text-decoration: underline;
+  }
+
+  .auth-msg {
+    font-size: 13px;
+    font-family: -apple-system, sans-serif;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+    display: none;
+  }
+
+  .auth-msg.error { background: #fdf0ef; color: var(--danger); display: block; }
+  .auth-msg.info { background: var(--accent-light); color: var(--accent); display: block; }
+
+  /* ── MAIN APP ── */
+  #app-screen { display: none; flex-direction: column; min-height: 100vh; }
+
+  /* Header */
+  .app-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    padding: 0 1.5rem;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header-logo {
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Georgia', serif;
+  }
+
+  .header-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-pill {
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: -apple-system, sans-serif;
+    background: var(--surface-3);
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+  }
+
+  .btn-logout {
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: -apple-system, sans-serif;
+    background: none;
+    border: 1px solid var(--line);
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-logout:hover { border-color: var(--ink-3); color: var(--ink); }
+
+  /* Layout */
+  .app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 56px);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    padding: 1rem 1rem 0.5rem;
+  }
+
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-family: -apple-system, sans-serif;
+    margin-bottom: 0.5rem;
+    padding: 0 4px;
+  }
+
+  .agent-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+    margin-bottom: 2px;
+  }
+
+  .agent-btn:hover { background: var(--surface-3); }
+
+  .agent-btn.active {
+    background: var(--accent-light);
+  }
+
+  .agent-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .agent-icon.compliance { background: #e8eff7; }
+  .agent-icon.governance { background: var(--gold-light); }
+
+  .agent-info { flex: 1; min-width: 0; }
+
+  .agent-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    font-family: -apple-system, sans-serif;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .agent-btn.active .agent-name { color: var(--accent); }
+
+  .agent-tag {
+    font-size: 10px;
+    color: var(--ink-3);
+    font-family: -apple-system, sans-serif;
+    margin-top: 1px;
+  }
+
+  .sidebar-divider {
+    height: 1px;
+    background: var(--line);
+    margin: 0.75rem 1rem;
+  }
+
+  .new-chat-btn {
+    margin: 0 1rem 1rem;
+    width: calc(100% - 2rem);
+    padding: 8px;
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--ink-3);
+    font-size: 12px;
+    font-family: -apple-system, sans-serif;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .new-chat-btn:hover { border-color: var(--ink-3); color: var(--ink); background: var(--surface-3); }
+
+  /* Chat area */
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface-2);
+  }
+
+  /* Agent header bar */
+  .chat-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    padding: 12px 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .chat-header-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .chat-header-icon.compliance { background: var(--accent-light); }
+  .chat-header-icon.governance { background: var(--gold-light); }
+
+  .chat-header-info { flex: 1; }
+
+  .chat-header-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    font-family: -apple-system, sans-serif;
+  }
+
+  .chat-header-desc {
+    font-size: 12px;
+    color: var(--ink-3);
+    font-family: -apple-system, sans-serif;
+    margin-top: 1px;
+  }
+
+  /* Messages */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  /* Welcome state */
+  .welcome {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-align: center;
+    padding: 3rem 2rem;
+    gap: 1rem;
+  }
+
+  .welcome-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 0.5rem;
+  }
+
+  .welcome-icon.compliance { background: var(--accent-light); }
+  .welcome-icon.governance { background: var(--gold-light); }
+
+  .welcome h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+  }
+
+  .welcome p {
+    font-size: 14px;
+    color: var(--ink-3);
+    font-family: -apple-system, sans-serif;
+    max-width: 380px;
+    line-height: 1.6;
+  }
+
+  .welcome-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 0.5rem;
+    max-width: 500px;
+  }
+
+  .chip {
+    padding: 7px 13px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: -apple-system, sans-serif;
+    color: var(--ink-2);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.12s;
+    text-align: left;
+    line-height: 1.4;
+  }
+
+  .chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+  /* Message bubbles */
+  .msg { display: flex; gap: 10px; max-width: 800px; }
+  .msg.user { flex-direction: row-reverse; align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+
+  .msg-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .msg.user .msg-avatar { background: var(--accent); color: white; font-family: -apple-system, sans-serif; font-weight: 600; }
+  .msg.assistant .msg-avatar { background: var(--surface-3); border: 1px solid var(--line); }
+
+  .msg-bubble {
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.65;
+    font-family: -apple-system, sans-serif;
+    max-width: calc(100% - 40px);
+  }
+
+  .msg.user .msg-bubble {
+    background: var(--accent);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg.assistant .msg-bubble {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-bottom-left-radius: 4px;
+  }
+
+  /* Markdown-like rendering inside assistant bubbles */
+  .msg-bubble strong { font-weight: 600; }
+  .msg-bubble em { font-style: italic; }
+
+  .msg-bubble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 13px;
+  }
+
+  .msg-bubble th {
+    background: var(--surface-3);
+    padding: 7px 10px;
+    text-align: left;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--ink-2);
+  }
+
+  .msg-bubble td {
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  .msg-bubble tr:nth-child(even) td { background: var(--surface-2); }
+
+  .msg-bubble ol, .msg-bubble ul {
+    padding-left: 1.2rem;
+    margin: 6px 0;
+  }
+
+  .msg-bubble li { margin-bottom: 4px; line-height: 1.5; }
+
+  .msg-bubble p { margin-bottom: 8px; }
+  .msg-bubble p:last-child { margin-bottom: 0; }
+
+  .msg-bubble h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 12px 0 6px;
+    color: var(--ink);
+  }
+
+  .msg-bubble code {
+    background: var(--surface-3);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 12px;
+  }
+
+  /* Clarification bubble — styled distinctly */
+  .msg-bubble.clarification {
+    border-left: 3px solid var(--gold);
+    background: var(--gold-light);
+    border-color: #e8d5a8;
+  }
+
+  /* Typing indicator */
+  .typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    border-bottom-left-radius: 4px;
+    width: fit-content;
+  }
+
+  .typing span {
+    width: 6px;
+    height: 6px;
+    background: var(--ink-3);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  /* Input area */
+  .input-area {
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    padding: 1rem 1.5rem;
+  }
+
+  .input-wrap {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 8px 8px 14px;
+    transition: border-color 0.15s;
+  }
+
+  .input-wrap:focus-within { border-color: var(--accent); }
+
+  #chat-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-family: -apple-system, sans-serif;
+    color: var(--ink);
+    background: transparent;
+    resize: none;
+    min-height: 22px;
+    max-height: 160px;
+    line-height: 1.5;
+  }
+
+  #chat-input::placeholder { color: var(--ink-3); }
+
+  .send-btn {
+    width: 34px;
+    height: 34px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  .send-btn:hover { background: var(--accent-mid); }
+  .send-btn:active { transform: scale(0.95); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .send-btn svg { width: 16px; height: 16px; fill: white; }
+
+  .input-hint {
+    font-size: 11px;
+    color: var(--ink-3);
+    font-family: -apple-system, sans-serif;
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .sidebar { width: 200px; min-width: 200px; }
+    .messages { padding: 1rem; }
+    .input-area { padding: 0.75rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── AUTH SCREEN ── -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">DVM</div>
+    <h1>DVM Advisory</h1>
+    <p>AI-powered compliance & governance workspace. Sign in with your work email to continue.</p>
+
+    <div id="auth-msg" class="auth-msg"></div>
+
+    <!-- Step 1: Email -->
+    <div id="step-email">
+      <input type="email" id="email-input" class="auth-input" placeholder="your@company.com" />
+      <button class="btn-primary" id="send-otp-btn" onclick="sendOTP()">Send login code</button>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="step-otp" style="display:none;">
+      <p style="font-size:13px;color:var(--ink-3);font-family:-apple-system,sans-serif;margin-bottom:1rem;">Enter the 6-digit code sent to <strong id="otp-email-label" style="color:var(--ink)"></strong></p>
+      <div class="otp-inputs">
+        <input type="text" maxlength="1" class="otp-input" id="otp0" oninput="otpInput(0)" onkeydown="otpKey(event,0)">
+        <input type="text" maxlength="1" class="otp-input" id="otp1" oninput="otpInput(1)" onkeydown="otpKey(event,1)">
+        <input type="text" maxlength="1" class="otp-input" id="otp2" oninput="otpInput(2)" onkeydown="otpKey(event,2)">
+        <input type="text" maxlength="1" class="otp-input" id="otp3" oninput="otpInput(3)" onkeydown="otpKey(event,3)">
+        <input type="text" maxlength="1" class="otp-input" id="otp4" oninput="otpInput(4)" onkeydown="otpKey(event,4)">
+        <input type="text" maxlength="1" class="otp-input" id="otp5" oninput="otpInput(5)" onkeydown="otpKey(event,5)">
+      </div>
+      <button class="btn-primary" id="verify-btn" onclick="verifyOTP()">Verify & sign in</button>
+      <br>
+      <button class="auth-back" onclick="backToEmail()">← Use a different email</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app-screen">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="header-logo">DVM</div>
+      <span class="header-name">Advisory Workspace</span>
+    </div>
+    <div class="header-right">
+      <span class="user-pill" id="user-email-display"></span>
+      <button class="btn-logout" onclick="logout()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="app-body">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Agents</div>
+        <button class="agent-btn active" id="btn-compliance" onclick="switchAgent('compliance')">
+          <div class="agent-icon compliance">⚖️</div>
+          <div class="agent-info">
+            <div class="agent-name">DVM Compliance</div>
+            <div class="agent-tag">Companies Act · SEBI · FEMA · Tax</div>
+          </div>
+        </button>
+        <button class="agent-btn" id="btn-governance" onclick="switchAgent('governance')">
+          <div class="agent-icon governance">📋</div>
+          <div class="agent-info">
+            <div class="agent-name">Board Governance</div>
+            <div class="agent-tag">Agendas · Minutes · Compliance</div>
+          </div>
+        </button>
+      </div>
+
+      <div class="sidebar-divider"></div>
+
+      <div class="sidebar-section" style="flex:1;">
+        <div class="sidebar-label">Session</div>
+        <div id="history-list" style="font-size:12px;color:var(--ink-3);font-family:-apple-system,sans-serif;padding:4px;">
+          No messages yet
+        </div>
+      </div>
+
+      <button class="new-chat-btn" onclick="newChat()">+ New conversation</button>
+    </aside>
+
+    <!-- Chat -->
+    <main class="chat-area" id="chat-area">
+      <div class="chat-header" id="chat-header">
+        <div class="chat-header-icon compliance" id="chat-icon">⚖️</div>
+        <div class="chat-header-info">
+          <div class="chat-header-name" id="chat-agent-name">DVM — Compliance Expert</div>
+          <div class="chat-header-desc" id="chat-agent-desc">Companies Act · SEBI · FEMA · Income Tax · GST · RBI · HR Compliance</div>
+        </div>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="welcome" id="welcome-screen">
+          <div class="welcome-icon compliance" id="welcome-icon">⚖️</div>
+          <h2 id="welcome-title">DVM — Compliance Expert</h2>
+          <p id="welcome-desc">Ask about compliance requirements, regulatory procedures, transaction structuring, or any Indian regulatory matter. DVM will ask clarifying questions before giving you a precise answer.</p>
+          <div class="welcome-chips" id="welcome-chips"></div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-wrap">
+          <textarea id="chat-input" placeholder="Ask a compliance or regulatory question…" rows="1"
+            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+          <button class="send-btn" id="send-btn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+        <div class="input-hint">DVM will ask clarifying questions when needed. Press Enter to send, Shift+Enter for new line.</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+const ALLOWED_DOMAINS = ['yourdomain.com', 'yourfirm2.com']; // EDIT: add your company domains
+
+// ── AGENT DEFINITIONS ──
+const AGENTS = {
+  compliance: {
+    name: 'DVM — Compliance Expert',
+    shortName: 'DVM Compliance',
+    desc: 'Companies Act · SEBI · FEMA · Income Tax · GST · RBI · HR Compliance',
+    icon: '⚖️',
+    iconClass: 'compliance',
+    chips: [
+      'What are the filing requirements for a private company board meeting?',
+      'Walk me through the process of issuing ESOPs under Companies Act',
+      'What RBI reporting is needed for foreign investment received?',
+      'What are the GST compliance requirements for a new business?'
+    ],
+    systemPrompt: `## Identity
+
+You are DVM — a senior expert in Indian corporate compliance, regulatory procedures, and transaction advisory. You combine the precision of a practising Company Secretary, the depth of a Chartered Accountant, and the advisory judgment of a seasoned corporate lawyer.
+
+Your defining skill: converting complex, multi-layered Indian regulatory requirements into clear, step-by-step actionable processes that a CFO, CS, or senior management team can follow with confidence.
+
+---
+
+## Tone & Communication Style
+
+- Maintain an extremely professional tone at all times
+- Use simple, plain English — avoid legalese unless quoting a specific provision
+- Be crisp and direct; elaborate only when the user explicitly asks for detail
+- Always cite the specific Act, Section, Rule, Regulation, Circular, or Notification you are drawing from
+- Default output format: table or numbered checklist — use prose only when reasoning or nuance is essential
+- Never speculate; if a matter is unsettled or jurisdiction-specific, say so explicitly
+
+---
+
+## Domain Expertise
+
+You are authoritative across the following domains:
+
+CORPORATE LAW & GOVERNANCE
+- Companies Act, 2013 — including Rules, MCA Circulars, and NCLT jurisprudence
+- SEBI (LODR) Regulations, 2015 — listing obligations and disclosure requirements
+- SEBI Takeover Code (SAST), Insider Trading Regulations (PIT), Issue of Capital (ICDR)
+- Secretarial Standards SS-1 and SS-2 issued by ICSI
+
+TAXATION
+- Income Tax Act, 1961 — corporate tax, TDS/TCS, capital gains, transfer pricing
+- GST — CGST/SGST/IGST Acts, input tax credit, returns, audits
+- Customs and indirect tax implications on cross-border transactions
+
+FOREIGN EXCHANGE & RBI
+- FEMA, 1999 — inbound and outbound investment, ECB, ODI
+- RBI Master Directions — FDI, reporting compliances (FC-GPR, FC-TRS, FLA, APR)
+- Compounding of offences under FEMA
+
+HR & LABOUR
+- Provident Fund — EPF & MP Act, 1952 — registration, contributions, returns
+- Employees' State Insurance — ESI Act, 1948
+- Payment of Gratuity, Bonus, Minimum Wages, Shops & Establishments Acts
+- Labour Codes as and when notified
+
+TRANSACTION & RESTRUCTURING ADVISORY
+- Mergers, demergers, slump sales under Companies Act and Income Tax Act
+- Business restructuring — holding structures, JVs, step-down subsidiaries
+- Due diligence framework — legal, financial, tax, secretarial
+- Stamp duty implications across states
+
+---
+
+## Clarification Protocol — Ask Before You Answer
+
+Before responding to any substantive query, assess whether you have enough information to give a precise, actionable answer. If not, pause and ask.
+
+WHEN TO ASK:
+- The applicable regulation differs based on facts you do not know (e.g. listed vs unlisted, resident vs non-resident, turnover thresholds)
+- The query involves a transaction or restructuring with unstated parameters (e.g. parties involved, consideration, jurisdictions, timeline)
+- The compliance requirement depends on company-specific details (e.g. type of company — private/public/OPC, paid-up capital, sector)
+- The query is ambiguous enough that two materially different answers are equally valid
+
+HOW TO ASK:
+- Ask a maximum of 3 questions per round — never a long questionnaire
+- Frame questions as a short numbered list
+- State in one line why each question matters
+- Do not attempt to answer the query until you have the inputs you need
+- If a detail is truly immaterial to the regulatory outcome, state your assumption explicitly and proceed
+
+FORMAT FOR ASKING:
+"Before I can give you a precise answer, I need a few details:
+
+1. [Question] — [why this matters]
+2. [Question] — [why this matters]
+3. [Question] — [why this matters]
+
+Please share these and I will map out the exact process for you."
+
+WHAT NOT TO DO:
+- Do not assume a fact that changes the regulatory outcome
+- Do not give a generic answer covering all scenarios
+- Do not ask for information irrelevant to the query
+- Do not ask more than 3 questions at a time
+
+---
+
+## How You Respond
+
+FOR COMPLIANCE QUERIES:
+1. Identify the applicable law and specific provision
+2. State the requirement in one sentence
+3. Present the process as a numbered checklist or table: Action | Authority | Deadline | Form or Filing
+4. Note penalties for non-compliance where relevant
+
+FOR TRANSACTION & STRUCTURING QUERIES:
+1. Confirm you have the key facts before proceeding (apply Clarification Protocol)
+2. Map all applicable regulatory frameworks across domains
+3. Present options as a comparison table: Structure | Pros | Cons | Key Compliance
+4. Recommend the most efficient path with rationale
+5. Flag open issues requiring specialist advice
+
+---
+
+## Output Format Reference
+
+| Query type | Preferred format |
+|---|---|
+| Compliance checklist | Numbered steps with Act / Rule citation |
+| Regulatory comparison | Table: Option / Provision / Implication |
+| Process flow | Numbered steps with timelines and responsible party |
+| Document checklist | Table: Document / Purpose / Authority |
+| Transaction structure | Comparison table + recommendation |
+| Penalty / consequence | Table: Default / Penalty / Section |
+
+Never use bullet points as the primary format. Use numbered lists or tables.
+
+---
+
+## Scope Boundaries
+
+- You provide regulatory and procedural guidance — not legal opinions for court proceedings
+- Financial analysis and business performance assessment is outside your scope
+- For highly fact-specific matters, recommend engagement of specialist counsel
+- Always note when a regulation has been recently amended and state the effective date
+- Do not advise on evasion, misrepresentation, or non-disclosure of any kind`
+  },
+
+  governance: {
+    name: 'Board Governance Expert',
+    shortName: 'Board Governance',
+    desc: 'Board & committee meeting agendas · Minutes · Compliance calendar',
+    icon: '📋',
+    iconClass: 'governance',
+    chips: [
+      'Draft a board meeting agenda for approving audited financials',
+      'Prepare minutes for a board meeting that approved an ESOP scheme',
+      'Draft an audit committee agenda for Q2 review',
+      'What is the board compliance calendar for a listed company?'
+    ],
+    systemPrompt: `## Identity
+
+You are a senior Board Governance expert with deep expertise in Indian corporate secretarial practice. You assist companies in conducting board and committee meetings in full compliance with the Companies Act, 2013, Secretarial Standards SS-1 and SS-2, and SEBI LODR Regulations (for listed companies).
+
+Your defining skill: producing precise, professionally drafted board agendas, notices, minutes, and resolutions that are compliant, complete, and ready to use — while asking the right questions first to ensure accuracy.
+
+---
+
+## Tone & Communication Style
+
+- Extremely professional tone at all times
+- Plain English — no unnecessary legalese
+- Output documents must be formal and suitable for official records
+- Always cite the applicable Section, Rule, or Secretarial Standard
+- Be crisp; elaborate only when the user asks
+
+---
+
+## Domain Expertise
+
+BOARD MEETINGS (SS-1)
+- Notice requirements, quorum, agenda items, passing of resolutions
+- Circular resolutions — when permitted and how to document
+- Leave of absence, minutes signing, statutory registers
+- Directors' interests and disclosure requirements under Section 184
+
+GENERAL MEETINGS (SS-2)
+- AGM and EGM — notice, quorum, proxies, e-voting
+- Ordinary and special resolutions — thresholds and filing (MGT-14)
+- Postal ballot procedures
+
+COMMITTEE MEETINGS
+- Audit Committee — Section 177, composition, mandatory agenda items
+- Nomination & Remuneration Committee — Section 178
+- CSR Committee — Section 135
+- Stakeholders Relationship Committee
+- Any other board-constituted committee
+
+LISTED COMPANY REQUIREMENTS (SEBI LODR)
+- Board meeting intimation to stock exchanges — Regulation 29
+- Outcome of board meeting — Regulation 30
+- Related party transaction approvals — Regulation 23
+- Disclosure of material events
+
+COMPLIANCE CALENDAR
+- Statutory deadlines — AGM, board meetings (minimum 4 per year), filings
+- Event-based compliances triggered by board decisions
+
+---
+
+## Clarification Protocol — Ask Before You Draft
+
+Before drafting any document, confirm the following. Ask as a numbered list — maximum 3 questions per round:
+
+FOR AGENDAS:
+1. Type of meeting — board / audit committee / NRC / CSR / other
+2. Listed or unlisted company
+3. Items to be transacted — ask the user to list them; do not assume
+
+FOR MINUTES:
+1. Date, time, venue, and attendees (directors present, invitees)
+2. Items actually discussed and decisions taken
+3. Any dissent recorded or interests disclosed
+
+FORMAT FOR ASKING:
+"Before I draft this, I need a few details:
+
+1. [Question] — [why this matters]
+2. [Question] — [why this matters]
+3. [Question] — [why this matters]"
+
+---
+
+## Document Standards
+
+AGENDA FORMAT:
+- Meeting header: company name, CIN, type of meeting, date, time, venue
+- Each agenda item numbered, with applicable Section/SS reference
+- Any item requiring special notice or disclosure flagged
+
+MINUTES FORMAT:
+- Full compliance with SS-1 / SS-2
+- Record: attendance, quorum confirmation, each item discussed, resolution passed (verbatim where required), voting result
+- Directors' interests / disclosures recorded under the relevant item
+- Signed-off section for Chairman
+
+RESOLUTIONS:
+- Ordinary resolutions — standard drafting
+- Special resolutions — clearly marked, with Section reference
+- Circular resolutions — with deemed date of passing
+
+---
+
+## Compliance Calendar Output
+
+When producing a compliance calendar, format as a table:
+Deadline | Requirement | Applicable to | Section / Regulation | Consequence of default
+
+---
+
+## Scope Boundaries
+
+- You draft governance documents — not legal opinions
+- For contentious resolutions (e.g. related party transactions at fair market value, buy-back pricing), flag that specialist review is needed
+- Do not draft documents for transactions that appear designed to circumvent disclosure requirements`
+  }
+};
+
+// ── STATE ──
+let currentAgent = 'compliance';
+let conversations = { compliance: [], governance: [] };
+let currentUser = null;
+let isLoading = false;
+let pendingEmail = '';
+
+// ── AUTH ──
+function getDomain(email) {
+  return email.split('@')[1]?.toLowerCase() || '';
+}
+
+function isAllowedDomain(email) {
+  const domain = getDomain(email);
+  return ALLOWED_DOMAINS.some(d => d.toLowerCase() === domain);
+}
+
+async function sendOTP() {
+  const email = document.getElementById('email-input').value.trim().toLowerCase();
+  const btn = document.getElementById('send-otp-btn');
+  const msg = document.getElementById('auth-msg');
+
+  if (!email || !email.includes('@')) {
+    showAuthMsg('Please enter a valid email address.', 'error'); return;
+  }
+  if (!isAllowedDomain(email)) {
+    showAuthMsg('Access is restricted to authorised company email addresses.', 'error'); return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  try {
+    const res = await fetch('/.netlify/functions/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to send code');
+
+    pendingEmail = email;
+    document.getElementById('otp-email-label').textContent = email;
+    document.getElementById('step-email').style.display = 'none';
+    document.getElementById('step-otp').style.display = 'block';
+    document.getElementById('otp0').focus();
+    showAuthMsg('Code sent! Check your inbox.', 'info');
+  } catch (e) {
+    showAuthMsg(e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Send login code';
+  }
+}
+
+async function verifyOTP() {
+  const code = Array.from({length:6}, (_,i) => document.getElementById('otp'+i).value).join('');
+  if (code.length < 6) { showAuthMsg('Please enter the full 6-digit code.', 'error'); return; }
+
+  const btn = document.getElementById('verify-btn');
+  btn.disabled = true;
+  btn.textContent = 'Verifying…';
+
+  try {
+    const res = await fetch('/.netlify/functions/verify-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: pendingEmail, code })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Invalid code');
+
+    currentUser = { email: pendingEmail };
+    sessionStorage.setItem('dvm_user', JSON.stringify(currentUser));
+    showApp();
+  } catch (e) {
+    showAuthMsg(e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Verify & sign in';
+  }
+}
+
+function otpInput(index) {
+  const val = document.getElementById('otp'+index).value;
+  if (val && index < 5) document.getElementById('otp'+(index+1)).focus();
+}
+
+function otpKey(e, index) {
+  if (e.key === 'Backspace' && !document.getElementById('otp'+index).value && index > 0) {
+    document.getElementById('otp'+(index-1)).focus();
+  }
+  if (e.key === 'Enter') verifyOTP();
+}
+
+function backToEmail() {
+  document.getElementById('step-otp').style.display = 'none';
+  document.getElementById('step-email').style.display = 'block';
+  document.getElementById('send-otp-btn').disabled = false;
+  document.getElementById('send-otp-btn').textContent = 'Send login code';
+  showAuthMsg('', '');
+}
+
+function showAuthMsg(text, type) {
+  const el = document.getElementById('auth-msg');
+  el.textContent = text;
+  el.className = 'auth-msg' + (type ? ' ' + type : '');
+}
+
+function logout() {
+  sessionStorage.removeItem('dvm_user');
+  currentUser = null;
+  conversations = { compliance: [], governance: [] };
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('email-input').value = '';
+  document.getElementById('step-email').style.display = 'block';
+  document.getElementById('step-otp').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'flex';
+  document.getElementById('user-email-display').textContent = currentUser.email;
+  switchAgent('compliance');
+}
+
+// ── AGENT SWITCHING ──
+function switchAgent(agent) {
+  currentAgent = agent;
+  const a = AGENTS[agent];
+
+  // Update sidebar buttons
+  document.getElementById('btn-compliance').classList.toggle('active', agent === 'compliance');
+  document.getElementById('btn-governance').classList.toggle('active', agent === 'governance');
+
+  // Update chat header
+  document.getElementById('chat-icon').textContent = a.icon;
+  document.getElementById('chat-icon').className = 'chat-header-icon ' + a.iconClass;
+  document.getElementById('chat-agent-name').textContent = a.name;
+  document.getElementById('chat-agent-desc').textContent = a.desc;
+
+  renderMessages();
+}
+
+function newChat() {
+  conversations[currentAgent] = [];
+  renderMessages();
+}
+
+// ── RENDERING ──
+function renderMessages() {
+  const msgs = conversations[currentAgent];
+  const container = document.getElementById('messages');
+  const a = AGENTS[currentAgent];
+
+  if (msgs.length === 0) {
+    container.innerHTML = `
+      <div class="welcome" id="welcome-screen">
+        <div class="welcome-icon ${a.iconClass}">${a.icon}</div>
+        <h2>${a.name}</h2>
+        <p>${currentAgent === 'compliance'
+          ? 'Ask about compliance requirements, regulatory procedures, or transaction structuring. DVM will ask clarifying questions to give you a precise answer.'
+          : 'Draft board agendas, committee minutes, resolutions, or get your compliance calendar. I will ask a few questions to ensure the output is accurate.'
+        }</p>
+        <div class="welcome-chips">
+          ${a.chips.map(c => `<button class="chip" onclick="useChip(this)">${c}</button>`).join('')}
+        </div>
+      </div>`;
+    updateHistory();
+    return;
+  }
+
+  container.innerHTML = msgs.map(m => renderMsg(m)).join('');
+  updateHistory();
+  container.scrollTop = container.scrollHeight;
+}
+
+function renderMsg(m) {
+  const isUser = m.role === 'user';
+  const isClarification = !isUser && m.content && m.content.includes('I need a few details');
+  const avatarContent = isUser
+    ? currentUser.email.charAt(0).toUpperCase()
+    : AGENTS[currentAgent].icon;
+
+  return `<div class="msg ${isUser ? 'user' : 'assistant'}">
+    <div class="msg-avatar">${avatarContent}</div>
+    <div class="msg-bubble${isClarification ? ' clarification' : ''}">${isUser ? escapeHtml(m.content) : formatMarkdown(m.content)}</div>
+  </div>`;
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatMarkdown(text) {
+  return text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^\d+\. (.+)$/gm, (_, item) => `<li>${item}</li>`)
+    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ol>${m}</ol>`)
+    .replace(/\|(.+)\|/g, (_, row) => {
+      const cells = row.split('|').map(c => c.trim());
+      return '<tr>' + cells.map(c => c.match(/^[-:]+$/) ? '' : `<td>${c}</td>`).join('') + '</tr>';
+    })
+    .replace(/(<tr>.*<\/tr>\n?)+/g, m => {
+      const rows = m.trim().split('\n').filter(r => r.trim() && r !== '<tr></tr>');
+      if (rows.length === 0) return '';
+      const header = rows[0].replace(/<td>/g,'<th>').replace(/<\/td>/g,'</th>');
+      const body = rows.slice(1).join('');
+      return `<table><thead>${header}</thead><tbody>${body}</tbody></table>`;
+    })
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(?!<[htop])(.+)$/gm, '$1')
+    .replace(/^/, '<p>').replace(/$/, '</p>')
+    .replace(/<p><\/p>/g, '')
+    .replace(/<p>(<[hot])/g, '$1')
+    .replace(/(<\/[hot][^>]*>)<\/p>/g, '$1');
+}
+
+function updateHistory() {
+  const msgs = conversations[currentAgent];
+  const list = document.getElementById('history-list');
+  const userMsgs = msgs.filter(m => m.role === 'user');
+  if (userMsgs.length === 0) {
+    list.textContent = 'No messages yet';
+    return;
+  }
+  list.innerHTML = userMsgs.slice(-4).map(m =>
+    `<div style="padding:4px;margin-bottom:3px;border-left:2px solid var(--line);padding-left:6px;cursor:default;line-height:1.4;color:var(--ink-2);">${m.content.substring(0,50)}${m.content.length>50?'…':''}</div>`
+  ).join('');
+}
+
+// ── CHAT ──
+function useChip(el) {
+  const input = document.getElementById('chat-input');
+  input.value = el.textContent;
+  autoResize(input);
+  input.focus();
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text || isLoading) return;
+
+  input.value = '';
+  input.style.height = 'auto';
+  isLoading = true;
+  document.getElementById('send-btn').disabled = true;
+
+  // Add user message
+  conversations[currentAgent].push({ role: 'user', content: text });
+  renderMessages();
+
+  // Show typing indicator
+  const messages = document.getElementById('messages');
+  const typing = document.createElement('div');
+  typing.className = 'msg assistant';
+  typing.id = 'typing-indicator';
+  typing.innerHTML = `<div class="msg-avatar">${AGENTS[currentAgent].icon}</div><div class="typing"><span></span><span></span><span></span></div>`;
+  messages.appendChild(typing);
+  messages.scrollTop = messages.scrollHeight;
+
+  try {
+    const res = await fetch('/.netlify/functions/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agent: currentAgent,
+        messages: conversations[currentAgent],
+        systemPrompt: AGENTS[currentAgent].systemPrompt
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+
+    conversations[currentAgent].push({ role: 'assistant', content: data.response });
+  } catch (e) {
+    conversations[currentAgent].push({ role: 'assistant', content: `I encountered an error: ${e.message}. Please try again.` });
+  }
+
+  typing.remove();
+  isLoading = false;
+  document.getElementById('send-btn').disabled = false;
+  renderMessages();
+  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+  document.getElementById('chat-input').focus();
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  const saved = sessionStorage.getItem('dvm_user');
+  if (saved) { currentUser = JSON.parse(saved); showApp(); }
+
+  document.getElementById('email-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendOTP();
+  });
+});
+</script>
+</body>
+</html>
