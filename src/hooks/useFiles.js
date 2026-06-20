@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const MAX_SIZE = 10 * 1024 * 1024
+const MAX_SIZE = 4 * 1024 * 1024
 
 const MIME_CATEGORY = {
   'image/jpeg': 'image',
@@ -42,7 +42,7 @@ export function useFiles() {
     const errs = []
     const added = []
     for (const file of Array.from(fileList)) {
-      if (file.size > MAX_SIZE) { errs.push(`${file.name}: too large (max 10 MB)`); continue }
+      if (file.size > MAX_SIZE) { errs.push(`${file.name}: too large (max 4 MB)`); continue }
       const category = MIME_CATEGORY[file.type]
       if (!category) { errs.push(`${file.name}: unsupported type`); continue }
       try {

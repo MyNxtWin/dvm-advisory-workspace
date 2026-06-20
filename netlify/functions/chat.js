@@ -17,7 +17,7 @@ function checkChatRate(email) {
 
 const VALID_CATEGORIES = new Set(['image', 'document', 'text'])
 const MAX_FILES = 5
-const MAX_FILE_DATA = 13_631_488
+const MAX_FILE_DATA = 5_592_405 // ~4 MB binary as base64
 const MAX_USER_TEXT = 32_000
 const VALID_MODEL = /^claude-[\w.-]+$/
 
