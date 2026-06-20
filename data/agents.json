@@ -33,6 +33,12 @@
         "mimeType": "text/plain",
         "category": "text",
         "size": 878
+      },
+      {
+        "name": "dvm-compliance-expert-chat.txt",
+        "mimeType": "text/plain",
+        "category": "text",
+        "size": 5847
       }
     ],
     "updatedAt": "2026-06-20T03:41:24.794Z"
