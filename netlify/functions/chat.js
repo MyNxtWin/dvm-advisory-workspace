@@ -143,7 +143,7 @@ exports.handler = async (event) => {
       headers: reqHeaders,
       body: JSON.stringify({
         model: safeModel(agent.model),
-        max_tokens: 4096,
+        max_tokens: 2048,
         cache_control: { type: 'ephemeral' },
         system: [{ type: 'text', text: agent.systemPrompt, cache_control: { type: 'ephemeral' } }],
         messages: allMessages,

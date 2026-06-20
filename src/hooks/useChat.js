@@ -49,10 +49,16 @@ export function useChat(user, onAuthExpired) {
         body: JSON.stringify(payload),
       })
 
-      const data = await res.json()
+      const ct = res.headers.get('content-type') || ''
+      const data = ct.includes('application/json') ? await res.json() : {}
 
       if (res.status === 401) { onAuthExpired?.(); return }
-      if (!res.ok) throw new Error(data.error || 'Request failed')
+      if (!res.ok) {
+        if (res.status === 502 || res.status === 504 || res.status === 524) {
+          throw new Error('The server took too long to respond. Please try again.')
+        }
+        throw new Error(data.error || `Something went wrong (${res.status}). Please try again.`)
+      }
 
       setConversations(prev => ({
         ...prev,

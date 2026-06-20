@@ -8,6 +8,7 @@
 
 [functions]
   included_files = ["data/**"]
+  timeout = 26
 
 [dev]
   command = "npm run dev"
