@@ -6,6 +6,9 @@
 [build.environment]
   SECRETS_SCAN_OMIT_KEYS = "GITHUB_OWNER,GITHUB_REPO,AGENTS_FILE_PATH"
 
+[functions]
+  included_files = ["data/**"]
+
 [dev]
   command = "npm run dev"
   port = 8888
