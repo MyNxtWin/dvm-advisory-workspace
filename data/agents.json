@@ -14,5 +14,20 @@
     ],
     "order": 0,
     "updatedAt": "2026-06-19T10:29:30.400Z"
+  },
+  {
+    "id": "cook",
+    "name": "test chef ",
+    "shortName": "chef",
+    "desc": "indian, chinese ",
+    "icon": "🫠",
+    "model": "claude-sonnet-4-6",
+    "order": 2,
+    "chips": [
+      "explain steps in detail"
+    ],
+    "systemPrompt": "You are a great chef",
+    "agentFiles": [],
+    "updatedAt": "2026-06-20T03:39:13.466Z"
   }
 ]
