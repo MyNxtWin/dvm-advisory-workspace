@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { useApp } from '../../context/AppContext'
 import './Admin.css'
 
 const MODELS = [
@@ -22,17 +23,60 @@ const MODELS = [
   },
 ]
 
+const MIME_CATEGORY = {
+  'image/jpeg': 'image', 'image/png': 'image', 'image/gif': 'image', 'image/webp': 'image',
+  'application/pdf': 'document',
+  'text/plain': 'text', 'text/csv': 'text', 'text/markdown': 'text',
+}
+
+const MAX_AGENT_FILES = 3
+const MAX_FILE_BYTES = 3 * 1024 * 1024
+
 const EMPTY = { id: '', name: '', shortName: '', desc: '', icon: '', systemPrompt: '', chips: '', order: 99, model: 'claude-haiku-4-5-20251001' }
 
+function fmtSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function readAsBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader()
+    r.onload = e => res(e.target.result.split(',')[1])
+    r.onerror = rej
+    r.readAsDataURL(file)
+  })
+}
+
+function readAsText(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader()
+    r.onload = e => res(e.target.result)
+    r.onerror = rej
+    r.readAsText(file)
+  })
+}
+
 export default function AgentForm({ agent, onSave, onClose, saving }) {
+  const { auth } = useApp()
   const [form, setForm] = useState(EMPTY)
+  // agentFiles = already on server (edit mode); pendingFiles = staged locally (create mode)
+  const [agentFiles, setAgentFiles] = useState([])
+  const [pendingFiles, setPendingFiles] = useState([])
+  const [fileMsg, setFileMsg] = useState('')
+  const [fileUploading, setFileUploading] = useState(false)
+  const [fileRemoving, setFileRemoving] = useState(null)
+  const fileInputRef = useRef(null)
   const isEdit = !!agent?.id
 
   useEffect(() => {
     const base = agent ? { ...EMPTY, ...agent } : EMPTY
-    // chips stored as array, edited as one-per-line textarea
     base.chips = Array.isArray(base.chips) ? base.chips.join('\n') : (base.chips || '')
     setForm(base)
+    setAgentFiles(agent?.agentFiles || [])
+    setPendingFiles([])
+    setFileMsg('')
   }, [agent])
 
   function set(field, value) {
@@ -46,8 +90,95 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
       ...form,
       chips: form.chips.split('\n').map(s => s.trim()).filter(Boolean),
     }
-    onSave(payload)
+    // Pass pendingFiles to parent so it can upload them after the agent is created
+    onSave(payload, isEdit ? [] : pendingFiles)
   }
+
+  async function callManage(body) {
+    const res = await fetch('/.netlify/functions/agents-manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...body,
+        email: auth.user.email,
+        sessionToken: auth.user.sessionToken,
+        sessionExpiry: auth.user.sessionExpiry,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Operation failed')
+    return data
+  }
+
+  const totalFiles = agentFiles.length + pendingFiles.length
+  const canAddMore = totalFiles < MAX_AGENT_FILES
+
+  async function handleFileSelect(e) {
+    const file = e.target.files[0]
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (!file) return
+
+    if (file.size > MAX_FILE_BYTES) {
+      setFileMsg(`File too large (max ${fmtSize(MAX_FILE_BYTES)})`)
+      return
+    }
+    const category = MIME_CATEGORY[file.type]
+    if (!category) {
+      setFileMsg('Unsupported file type. Use PDF, image, TXT, or CSV.')
+      return
+    }
+    if (totalFiles >= MAX_AGENT_FILES) {
+      setFileMsg(`Maximum ${MAX_AGENT_FILES} files per agent.`)
+      return
+    }
+
+    setFileUploading(true)
+    setFileMsg('')
+
+    try {
+      const data = category === 'text' ? await readAsText(file) : await readAsBase64(file)
+
+      if (isEdit) {
+        // Edit mode: upload immediately
+        const result = await callManage({
+          action: 'uploadAgentFile',
+          agentId: agent.id,
+          file: { name: file.name, mimeType: file.type, category, data, size: file.size },
+        })
+        setAgentFiles(prev => [...prev, { name: result.name, mimeType: file.type, category, size: file.size }])
+        setFileMsg('File added. Takes effect after site rebuilds (~1 min).')
+      } else {
+        // Create mode: stage locally, will be uploaded after agent is saved
+        setPendingFiles(prev => [...prev, { name: file.name, mimeType: file.type, category, data, size: file.size }])
+        setFileMsg('')
+      }
+    } catch (err) {
+      setFileMsg('Upload failed: ' + err.message)
+    } finally {
+      setFileUploading(false)
+    }
+  }
+
+  async function handleRemoveServerFile(filename) {
+    if (!confirm(`Remove "${filename}" from this agent?`)) return
+    setFileRemoving(filename)
+    setFileMsg('')
+    try {
+      await callManage({ action: 'removeAgentFile', agentId: agent.id, filename })
+      setAgentFiles(prev => prev.filter(f => f.name !== filename))
+      setFileMsg('File removed.')
+    } catch (err) {
+      setFileMsg('Remove failed: ' + err.message)
+    } finally {
+      setFileRemoving(null)
+    }
+  }
+
+  function handleRemovePending(name) {
+    setPendingFiles(prev => prev.filter(f => f.name !== name))
+  }
+
+  const ICONS = { image: '🖼️', document: '📄', text: '📋' }
 
   return (
     <div className="agent-form-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -158,6 +289,88 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
             />
             <div className="form-hint">This prompt is stored securely and never sent to the browser.</div>
           </div>
+
+          {/* ── Reference Documents ── */}
+          <div className="form-row">
+            <label>Reference Documents</label>
+            <div className="agent-files-section">
+
+              {/* Already-on-server files (edit mode) */}
+              {agentFiles.map(f => (
+                <div key={f.name} className="agent-file-row">
+                  <span className="agent-file-icon">{ICONS[f.category] || '📎'}</span>
+                  <span className="agent-file-name" title={f.name}>{f.name}</span>
+                  <span className="agent-file-size">{fmtSize(f.size)}</span>
+                  <button
+                    type="button"
+                    className="agent-file-remove"
+                    onClick={() => handleRemoveServerFile(f.name)}
+                    disabled={fileRemoving === f.name}
+                    title="Remove"
+                  >
+                    {fileRemoving === f.name ? '…' : '×'}
+                  </button>
+                </div>
+              ))}
+
+              {/* Staged (pending) files — create mode */}
+              {pendingFiles.map(f => (
+                <div key={f.name} className="agent-file-row agent-file-row--pending">
+                  <span className="agent-file-icon">{ICONS[f.category] || '📎'}</span>
+                  <span className="agent-file-name" title={f.name}>{f.name}</span>
+                  <span className="agent-file-size">{fmtSize(f.size)}</span>
+                  <span className="agent-file-pending-badge">queued</span>
+                  <button
+                    type="button"
+                    className="agent-file-remove"
+                    onClick={() => handleRemovePending(f.name)}
+                    title="Remove"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+
+              {totalFiles === 0 && (
+                <div className="agent-files-empty">
+                  No reference documents attached. Uploaded files are permanently included in every chat session with this agent.
+                </div>
+              )}
+
+              {canAddMore && (
+                <div className="agent-file-upload-row">
+                  <button
+                    type="button"
+                    className="btn btn-ghost agent-file-upload-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={fileUploading}
+                  >
+                    {fileUploading ? 'Reading…' : '+ Add file'}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.txt,.csv,.md"
+                    style={{ display: 'none' }}
+                    onChange={handleFileSelect}
+                  />
+                  <span className="agent-files-limit">{totalFiles}/{MAX_AGENT_FILES} files · max 3 MB each</span>
+                </div>
+              )}
+
+              {fileMsg && (
+                <div className={`agent-file-msg${fileMsg.startsWith('Upload failed') || fileMsg.startsWith('Remove failed') || fileMsg.startsWith('File too') || fileMsg.startsWith('Unsupported') || fileMsg.startsWith('Maximum') ? ' error' : ''}`}>
+                  {fileMsg}
+                </div>
+              )}
+            </div>
+            <div className="form-hint">
+              {isEdit
+                ? 'Files are always sent to the AI with every message. Changes take effect after the site rebuilds (~1–2 min). Users can download these files.'
+                : 'Files will be uploaded when you save the agent, then take effect after the site rebuilds (~1–2 min).'}
+            </div>
+          </div>
+
           <div className="form-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={saving || !form.id || !form.name || !form.systemPrompt || !form.model?.trim()}>

@@ -190,3 +190,120 @@
   color: var(--ink-3);
 }
 .admin-empty p { font-size: 15px; margin-bottom: 1rem; }
+
+/* ── Agent reference documents ── */
+.agent-files-section {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.agent-files-empty {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.6;
+}
+
+.agent-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line-2);
+  background: var(--surface);
+}
+
+.agent-file-row:last-of-type { border-bottom: none; }
+
+.agent-file-icon { font-size: 14px; flex-shrink: 0; }
+
+.agent-file-name {
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.agent-file-size {
+  font-size: 11px;
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+
+.agent-file-remove {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--ink-3);
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color 0.1s, background 0.1s;
+}
+
+.agent-file-remove:hover:not(:disabled) {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.agent-file-remove:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.agent-file-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--surface-2);
+  border-top: 1px dashed var(--line);
+}
+
+.agent-file-upload-btn {
+  font-size: 12px !important;
+  padding: 5px 12px !important;
+}
+
+.agent-files-limit {
+  font-size: 11px;
+  color: var(--ink-4);
+}
+
+.agent-file-msg {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--success);
+  background: var(--success-light);
+  border-top: 1px solid var(--line-2);
+}
+
+.agent-file-msg.error {
+  color: var(--danger);
+  background: var(--danger-light);
+}
+
+.agent-file-row--pending {
+  background: var(--surface-2);
+  opacity: 0.85;
+}
+
+.agent-file-pending-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 1px 6px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}

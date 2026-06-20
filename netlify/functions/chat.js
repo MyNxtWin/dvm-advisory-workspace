@@ -17,9 +17,12 @@ function checkChatRate(email) {
 
 const VALID_CATEGORIES = new Set(['image', 'document', 'text'])
 const MAX_FILES = 5
-const MAX_FILE_DATA = 13_631_488 // ~13 MB base64 (covers 10 MB binary with encoding overhead)
+const MAX_FILE_DATA = 13_631_488
 const MAX_USER_TEXT = 32_000
 const VALID_MODEL = /^claude-[\w.-]+$/
+
+// Cache agent files per agentId — cleared on cold start (i.e. after each deploy)
+const AGENT_FILE_CACHE = {}
 
 function getAgent(agentId) {
   try {
@@ -28,14 +31,37 @@ function getAgent(agentId) {
   } catch { return null }
 }
 
+function getAgentFiles(agent) {
+  const agentId = agent.id
+  if (AGENT_FILE_CACHE[agentId] !== undefined) return AGENT_FILE_CACHE[agentId]
+  if (!agent.agentFiles?.length) {
+    AGENT_FILE_CACHE[agentId] = []
+    return []
+  }
+  const result = []
+  for (const meta of agent.agentFiles) {
+    try {
+      const filePath = path.join(__dirname, '../../data/agent-files', agentId, meta.name)
+      const buf = fs.readFileSync(filePath)
+      const data = meta.category === 'text' ? buf.toString('utf8') : buf.toString('base64')
+      result.push({ name: meta.name, mimeType: meta.mimeType, category: meta.category, data })
+    } catch {
+      // File missing from filesystem (deploy not yet happened) — skip silently
+    }
+  }
+  AGENT_FILE_CACHE[agentId] = result
+  return result
+}
+
 function safeModel(model) {
   return (model && VALID_MODEL.test(model)) ? model : 'claude-haiku-4-5-20251001'
 }
 
-function buildContent(files, userText) {
-  if (!files || files.length === 0) return userText
+function buildContent(agentFiles, userFiles, userText) {
+  const allFiles = [...(agentFiles || []), ...(userFiles || [])]
+  if (allFiles.length === 0) return userText
   const blocks = []
-  for (const f of files) {
+  for (const f of allFiles) {
     const safeName = (f.name || 'file').replace(/[<>"&]/g, '').slice(0, 200)
     if (f.category === 'image') {
       blocks.push({ type: 'image', source: { type: 'base64', media_type: f.mimeType, data: f.data } })
@@ -75,7 +101,6 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Message too long.' }) }
     }
 
-    // Validate files
     if (files !== undefined) {
       if (!Array.isArray(files) || files.length > MAX_FILES) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Too many files attached.' }) }
@@ -92,6 +117,9 @@ exports.handler = async (event) => {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Unknown agent.' }) }
     }
 
+    // Load agent-level reference files — pass agent directly to avoid re-reading agents.json
+    const agentFiles = getAgentFiles(agent)
+
     const validHistory = Array.isArray(history)
       ? history.filter(m => m.role && m.content).slice(-20).map(m => ({
           role: m.role === 'user' ? 'user' : 'assistant',
@@ -99,10 +127,10 @@ exports.handler = async (event) => {
         }))
       : []
 
-    const currentContent = buildContent(files, userText.trim())
+    const currentContent = buildContent(agentFiles, files, userText.trim())
     const allMessages = [...validHistory, { role: 'user', content: currentContent }]
 
-    const hasPDF = files?.some(f => f.category === 'document')
+    const hasPDF = agentFiles.some(f => f.category === 'document') || files?.some(f => f.category === 'document')
     const reqHeaders = {
       'Content-Type': 'application/json',
       'x-api-key': process.env.ANTHROPIC_API_KEY,

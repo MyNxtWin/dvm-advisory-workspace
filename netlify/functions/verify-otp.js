@@ -42,7 +42,7 @@ exports.handler = async (event) => {
 
     clearAttempts(email)
 
-    const sessionExpiry = Math.floor(Date.now() / 1000) + 8 * 3600
+    const sessionExpiry = Math.floor(Date.now() / 1000) + 7 * 24 * 3600
     const sessionToken = signSession(email, sessionExpiry)
 
     return {

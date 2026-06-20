@@ -44,12 +44,32 @@ export default function AdminPanel() {
 
   useEffect(() => { load() }, [])
 
-  async function handleSave(agent) {
+  async function handleSave(agent, pendingFiles = []) {
     setSaving(true)
     setMsg('')
     try {
       await call('POST', { agent })
-      setMsg('Agent saved successfully.')
+
+      // Upload any files that were staged during create
+      const failed = []
+      for (const f of pendingFiles) {
+        try {
+          await call('POST', {
+            action: 'uploadAgentFile',
+            agentId: agent.id,
+            file: { name: f.name, mimeType: f.mimeType, category: f.category, data: f.data, size: f.size },
+          })
+        } catch (e) {
+          failed.push(f.name)
+        }
+      }
+
+      if (failed.length > 0) {
+        setMsg(`Agent saved, but ${failed.length} file(s) failed to upload: ${failed.join(', ')}. Edit the agent to retry.`)
+      } else {
+        setMsg('Agent saved successfully.')
+      }
+
       setShowForm(false)
       setEditing(null)
       await load()

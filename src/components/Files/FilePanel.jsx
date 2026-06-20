@@ -9,9 +9,10 @@ function fmtSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function FilePanel({ files, uploadError, addFiles, removeFile, togglePin, isOpen, onToggle }) {
+export default function FilePanel({ files, uploadError, addFiles, removeFile, togglePin, isOpen, onToggle, agentFiles, onDownloadAgentFile }) {
   const inputRef = useRef(null)
   const [dragging, setDragging] = useState(false)
+  const [downloading, setDownloading] = useState(null) // filename being downloaded
 
   function onDrop(e) {
     e.preventDefault()
@@ -19,15 +20,25 @@ export default function FilePanel({ files, uploadError, addFiles, removeFile, to
     addFiles(e.dataTransfer.files)
   }
 
+  async function handleDownload(f) {
+    setDownloading(f.name)
+    try {
+      await onDownloadAgentFile(f)
+    } finally {
+      setDownloading(null)
+    }
+  }
+
   const pinned = files.filter(f => f.pinned)
   const unpinned = files.filter(f => !f.pinned)
+  const hasAgentFiles = agentFiles?.length > 0
 
   return (
     <div className={`file-panel${isOpen ? ' open' : ''}`}>
       <div className="file-panel-header">
         <span className="file-panel-title">Files</span>
         <div className="file-panel-header-actions">
-          {files.length > 0 && <span className="file-count">{files.length}</span>}
+          {(files.length > 0 || hasAgentFiles) && <span className="file-count">{files.length + (agentFiles?.length || 0)}</span>}
           <button className="file-panel-toggle" onClick={onToggle} title={isOpen ? 'Hide files' : 'Show files'}>
             {isOpen ? '›' : '‹'}
           </button>
@@ -36,6 +47,33 @@ export default function FilePanel({ files, uploadError, addFiles, removeFile, to
 
       {isOpen && (
         <div className="file-panel-body">
+
+          {/* ── Agent reference documents ── */}
+          {hasAgentFiles && (
+            <div className="file-section agent-docs-section">
+              <div className="file-section-label agent-docs-label">Agent Documents</div>
+              {agentFiles.map(f => (
+                <div key={f.name} className="file-item agent-doc-item">
+                  <span className="file-icon">{ICONS[f.category] || '📎'}</span>
+                  <div className="file-info">
+                    <div className="file-name" title={f.name}>{f.name}</div>
+                    <div className="file-size">{fmtSize(f.size)}</div>
+                  </div>
+                  <button
+                    className="file-download-btn"
+                    onClick={() => handleDownload(f)}
+                    disabled={downloading === f.name}
+                    title="Download"
+                  >
+                    {downloading === f.name ? '…' : '↓'}
+                  </button>
+                </div>
+              ))}
+              <div className="agent-docs-hint">Always included in every chat with this agent</div>
+            </div>
+          )}
+
+          {/* ── Upload zone ── */}
           <div
             className={`file-drop-zone${dragging ? ' dragging' : ''}`}
             onDrop={onDrop}

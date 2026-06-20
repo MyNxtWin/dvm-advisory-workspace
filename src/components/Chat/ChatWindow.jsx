@@ -131,12 +131,45 @@ function printPdf(messages, agentName) {
 
 // ── Component ───────────────────────────────────────────────────────────────
 export default function ChatWindow({ filePanelOpen, onFilePanelToggle }) {
-  const { chat, agents, files } = useApp()
+  const { chat, agents, files, auth } = useApp()
   const [showExport, setShowExport] = useState(false)
   const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 })
   const exportRef = useRef(null)
   const exportBtnRef = useRef(null)
   const currentAgent = agents.agents.find(a => a.id === chat.currentAgentId) || null
+
+  async function downloadAgentFile(f) {
+    const res = await fetch('/.netlify/functions/get-agent-file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentId: currentAgent.id,
+        filename: f.name,
+        email: auth.user.email,
+        sessionToken: auth.user.sessionToken,
+        sessionExpiry: auth.user.sessionExpiry,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) { alert(data.error || 'Download failed.'); return }
+
+    let blob
+    if (f.category === 'text') {
+      blob = new Blob([data.data], { type: data.mimeType || 'text/plain' })
+    } else {
+      const bytes = atob(data.data)
+      const arr = new Uint8Array(bytes.length)
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i)
+      blob = new Blob([arr], { type: data.mimeType })
+    }
+
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = f.name
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -236,6 +269,8 @@ export default function ChatWindow({ filePanelOpen, onFilePanelToggle }) {
         togglePin={files.togglePin}
         isOpen={filePanelOpen}
         onToggle={onFilePanelToggle}
+        agentFiles={currentAgent?.agentFiles || []}
+        onDownloadAgentFile={downloadAgentFile}
       />
     </div>
   )

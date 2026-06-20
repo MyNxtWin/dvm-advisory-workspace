@@ -267,3 +267,59 @@
   background: var(--danger-light);
   color: var(--danger);
 }
+
+/* ── Agent reference documents ── */
+.agent-docs-section {
+  border-bottom: 1px solid var(--line);
+  background: var(--accent-light);
+  padding-bottom: 6px;
+}
+
+.agent-docs-label {
+  color: var(--accent) !important;
+}
+
+.agent-doc-item {
+  background: transparent;
+}
+
+.agent-doc-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.agent-docs-hint {
+  padding: 4px 12px 8px;
+  font-size: 10px;
+  color: var(--accent);
+  opacity: 0.75;
+  line-height: 1.4;
+}
+
+.file-download-btn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--accent);
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: color 0.1s, background 0.1s;
+  opacity: 0.7;
+}
+
+.file-download-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+  opacity: 1;
+}
+
+.file-download-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -12,16 +12,16 @@ export function useAuth() {
 
   useEffect(() => {
     try {
-      const raw = sessionStorage.getItem(SESSION_KEY)
+      const raw = localStorage.getItem(SESSION_KEY)
       if (!raw) return
       const parsed = JSON.parse(raw)
       if (parsed.sessionExpiry && Math.floor(Date.now() / 1000) < parsed.sessionExpiry) {
         setUser(parsed)
       } else {
-        sessionStorage.removeItem(SESSION_KEY)
+        localStorage.removeItem(SESSION_KEY)
       }
     } catch {
-      sessionStorage.removeItem(SESSION_KEY)
+      localStorage.removeItem(SESSION_KEY)
     }
   }, [])
 
@@ -58,14 +58,14 @@ export function useAuth() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Invalid code')
-      // isAdmin is NOT stored in sessionStorage — it's verified server-side on every admin operation
+      // isAdmin is NOT stored in localStorage — it's verified server-side on every admin operation
       const session = {
         email: data.email,
         sessionToken: data.sessionToken,
         sessionExpiry: data.sessionExpiry,
         isAdmin: data.isAdmin, // UI hint only — backend verifies on every admin operation
       }
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session))
       otpRef.current = null
       setUser(session)
     } catch (e) {
@@ -76,7 +76,7 @@ export function useAuth() {
   }
 
   function logout() {
-    sessionStorage.removeItem(SESSION_KEY)
+    localStorage.removeItem(SESSION_KEY)
     otpRef.current = null
     setUser(null)
     setStep('email')
