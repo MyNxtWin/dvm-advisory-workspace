@@ -71,7 +71,7 @@ exports.handler = async (event) => {
     const hasPDF = agentFiles.some(f => f.category === 'document') || (job.userFiles || []).some(f => f.category === 'document')
     const reqHeaders = {
       'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'x-api-key': process.env.ANTHROPIC_KEY,
       'anthropic-version': '2023-06-01',
       ...(hasPDF && { 'anthropic-beta': 'pdfs-2024-09-25' }),
     }

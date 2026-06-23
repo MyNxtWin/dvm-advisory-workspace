@@ -90,7 +90,7 @@ exports.handler = async (event) => {
     })
 
     // Trigger background function — it returns 202 immediately, runs async
-    const siteUrl = (process.env.URL || 'http://localhost:8888').replace(/\/$/, '')
+    const siteUrl = (process.env.SITE_URL || 'http://localhost:8888').replace(/\/$/, '')
     const triggerRes = await fetch(`${siteUrl}/.netlify/functions/chat-run-background`, {
       method: 'POST',
       headers: {
