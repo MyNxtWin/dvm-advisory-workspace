@@ -23,6 +23,11 @@ exports.handler = async (event) => {
       return { statusCode: 404, headers, body: JSON.stringify({ error: 'Job not found.' }) }
     }
 
+    if (job.createdAt && Date.now() - job.createdAt > 15 * 60 * 1000) {
+      await store.delete(jobId).catch(() => {})
+      return { statusCode: 200, headers, body: JSON.stringify({ status: 'error', error: 'Request expired. Please try again.' }) }
+    }
+
     if (job.status === 'done') {
       await store.delete(jobId).catch(() => {})
       return { statusCode: 200, headers, body: JSON.stringify({ status: 'done', response: job.response }) }

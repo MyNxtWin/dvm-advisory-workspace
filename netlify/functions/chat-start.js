@@ -80,6 +80,7 @@ exports.handler = async (event) => {
 
     await store.setJSON(jobId, {
       status: 'pending',
+      createdAt: Date.now(),
       history: Array.isArray(history) ? history.slice(-20) : [],
       userText: userText.trim(),
       userFiles: files || [],
