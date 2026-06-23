@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from 'react'
+import React, { createContext, useContext, useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useChat } from '../hooks/useChat'
 import { useAgents } from '../hooks/useAgents'
@@ -11,6 +11,12 @@ export function AppProvider({ children }) {
   const agents = useAgents(auth.user)
   const files = useFiles()
   const chat = useChat(auth.user, auth.logout)
+
+  useEffect(() => {
+    if (!chat.currentAgentId && agents.agents.length > 0) {
+      chat.switchAgent(agents.agents[0].id)
+    }
+  }, [agents.agents])
 
   return (
     <AppCtx.Provider value={{ auth, agents, chat, files }}>

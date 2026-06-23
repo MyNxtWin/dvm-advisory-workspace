@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useApp } from '../../context/AppContext'
 import './Admin.css'
 
 const MODELS = [
@@ -59,14 +58,13 @@ function readAsText(file) {
 }
 
 export default function AgentForm({ agent, onSave, onClose, saving }) {
-  const { auth } = useApp()
   const [form, setForm] = useState(EMPTY)
-  // agentFiles = already on server (edit mode); pendingFiles = staged locally (create mode)
+  // agentFiles = already on server; pendingFiles = staged adds; pendingRemovals = staged deletes
   const [agentFiles, setAgentFiles] = useState([])
   const [pendingFiles, setPendingFiles] = useState([])
+  const [pendingRemovals, setPendingRemovals] = useState([])
   const [fileMsg, setFileMsg] = useState('')
   const [fileUploading, setFileUploading] = useState(false)
-  const [fileRemoving, setFileRemoving] = useState(null)
   const fileInputRef = useRef(null)
   const isEdit = !!agent?.id
 
@@ -76,6 +74,7 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
     setForm(base)
     setAgentFiles(agent?.agentFiles || [])
     setPendingFiles([])
+    setPendingRemovals([])
     setFileMsg('')
   }, [agent])
 
@@ -90,27 +89,11 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
       ...form,
       chips: form.chips.split('\n').map(s => s.trim()).filter(Boolean),
     }
-    // Pass pendingFiles to parent so it can upload them after the agent is created
-    onSave(payload, isEdit ? [] : pendingFiles)
+    onSave(payload, pendingFiles, pendingRemovals)
   }
 
-  async function callManage(body) {
-    const res = await fetch('/.netlify/functions/agents-manage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...body,
-        email: auth.user.email,
-        sessionToken: auth.user.sessionToken,
-        sessionExpiry: auth.user.sessionExpiry,
-      }),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Operation failed')
-    return data
-  }
-
-  const totalFiles = agentFiles.length + pendingFiles.length
+  const activeServerFiles = agentFiles.filter(f => !pendingRemovals.includes(f.name))
+  const totalFiles = activeServerFiles.length + pendingFiles.length
   const canAddMore = totalFiles < MAX_AGENT_FILES
 
   async function handleFileSelect(e) {
@@ -138,20 +121,9 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
     try {
       const data = category === 'text' ? await readAsText(file) : await readAsBase64(file)
 
-      if (isEdit) {
-        // Edit mode: upload immediately
-        const result = await callManage({
-          action: 'uploadAgentFile',
-          agentId: agent.id,
-          file: { name: file.name, mimeType: file.type, category, data, size: file.size },
-        })
-        setAgentFiles(prev => [...prev, { name: result.name, mimeType: file.type, category, size: file.size }])
-        setFileMsg('File added. Takes effect after site rebuilds (~1 min).')
-      } else {
-        // Create mode: stage locally, will be uploaded after agent is saved
-        setPendingFiles(prev => [...prev, { name: file.name, mimeType: file.type, category, data, size: file.size }])
-        setFileMsg('')
-      }
+      // Stage locally in both modes — uploaded in batch when Save is clicked
+      setPendingFiles(prev => [...prev, { name: file.name, mimeType: file.type, category, data, size: file.size }])
+      setFileMsg('')
     } catch (err) {
       setFileMsg('Upload failed: ' + err.message)
     } finally {
@@ -159,19 +131,10 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
     }
   }
 
-  async function handleRemoveServerFile(filename) {
-    if (!confirm(`Remove "${filename}" from this agent?`)) return
-    setFileRemoving(filename)
-    setFileMsg('')
-    try {
-      await callManage({ action: 'removeAgentFile', agentId: agent.id, filename })
-      setAgentFiles(prev => prev.filter(f => f.name !== filename))
-      setFileMsg('File removed.')
-    } catch (err) {
-      setFileMsg('Remove failed: ' + err.message)
-    } finally {
-      setFileRemoving(null)
-    }
+  function handleRemoveAgentFile(filename) {
+    setPendingRemovals(prev =>
+      prev.includes(filename) ? prev.filter(n => n !== filename) : [...prev, filename]
+    )
   }
 
   function handleRemovePending(name) {
@@ -295,25 +258,28 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
             <label>Reference Documents</label>
             <div className="agent-files-section">
 
-              {/* Already-on-server files (edit mode) */}
-              {agentFiles.map(f => (
-                <div key={f.name} className="agent-file-row">
-                  <span className="agent-file-icon">{ICONS[f.category] || '📎'}</span>
-                  <span className="agent-file-name" title={f.name}>{f.name}</span>
-                  <span className="agent-file-size">{fmtSize(f.size)}</span>
-                  <button
-                    type="button"
-                    className="agent-file-remove"
-                    onClick={() => handleRemoveServerFile(f.name)}
-                    disabled={fileRemoving === f.name}
-                    title="Remove"
-                  >
-                    {fileRemoving === f.name ? '…' : '×'}
-                  </button>
-                </div>
-              ))}
+              {/* Already-on-server files — click × to stage for removal, ↩ to undo */}
+              {agentFiles.map(f => {
+                const staged = pendingRemovals.includes(f.name)
+                return (
+                  <div key={f.name} className="agent-file-row">
+                    <span className="agent-file-icon" style={staged ? { opacity: 0.4 } : {}}>{ICONS[f.category] || '📎'}</span>
+                    <span className="agent-file-name" title={f.name} style={staged ? { textDecoration: 'line-through', opacity: 0.4 } : {}}>{f.name}</span>
+                    <span className="agent-file-size" style={staged ? { opacity: 0.4 } : {}}>{fmtSize(f.size)}</span>
+                    {staged && <span className="agent-file-pending-badge" style={{ background: 'var(--error, #dc2626)' }}>removing</span>}
+                    <button
+                      type="button"
+                      className="agent-file-remove"
+                      onClick={() => handleRemoveAgentFile(f.name)}
+                      title={staged ? 'Undo removal' : 'Remove'}
+                    >
+                      {staged ? '↩' : '×'}
+                    </button>
+                  </div>
+                )
+              })}
 
-              {/* Staged (pending) files — create mode */}
+              {/* Staged (pending) files — uploaded on save */}
               {pendingFiles.map(f => (
                 <div key={f.name} className="agent-file-row agent-file-row--pending">
                   <span className="agent-file-icon">{ICONS[f.category] || '📎'}</span>
@@ -331,7 +297,7 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
                 </div>
               ))}
 
-              {totalFiles === 0 && (
+              {agentFiles.length === 0 && pendingFiles.length === 0 && (
                 <div className="agent-files-empty">
                   No reference documents attached. Uploaded files are permanently included in every chat session with this agent.
                 </div>
@@ -365,9 +331,7 @@ export default function AgentForm({ agent, onSave, onClose, saving }) {
               )}
             </div>
             <div className="form-hint">
-              {isEdit
-                ? 'Files are always sent to the AI with every message. Changes take effect after the site rebuilds (~1–2 min). Users can download these files.'
-                : 'Files will be uploaded when you save the agent, then take effect after the site rebuilds (~1–2 min).'}
+              Files are uploaded and removals applied when you click Save. Changes take effect after the site rebuilds (~1–2 min).
             </div>
           </div>
 

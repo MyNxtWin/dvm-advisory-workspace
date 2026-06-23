@@ -4,8 +4,8 @@ import Sidebar from '../components/Layout/Sidebar'
 import ChatWindow from '../components/Chat/ChatWindow'
 
 export default function WorkspacePage() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [filePanelOpen, setFilePanelOpen] = useState(() => window.innerWidth > 960)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [filePanelOpen, setFilePanelOpen] = useState(true)
 
   return (
     <div className="app-layout">
