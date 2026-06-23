@@ -43,27 +43,46 @@ export function useChat(user, onAuthExpired) {
         }))
       }
 
-      const res = await fetch('/.netlify/functions/chat', {
+      // Step 1: submit to chat-start — validates and returns a jobId immediately
+      const startRes = await fetch('/.netlify/functions/chat-start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
 
-      const ct = res.headers.get('content-type') || ''
-      const data = ct.includes('application/json') ? await res.json() : {}
+      const startCt = startRes.headers.get('content-type') || ''
+      const startData = startCt.includes('application/json') ? await startRes.json() : {}
 
-      if (res.status === 401) { onAuthExpired?.(); return }
-      if (!res.ok) {
-        if (res.status === 502 || res.status === 504 || res.status === 524) {
-          throw new Error('The server took too long to respond. Please try again.')
-        }
-        throw new Error(data.error || `Something went wrong (${res.status}). Please try again.`)
+      if (startRes.status === 401) { onAuthExpired?.(); return }
+      if (!startRes.ok) {
+        throw new Error(startData.error || `Something went wrong (${startRes.status}). Please try again.`)
       }
 
-      setConversations(prev => ({
-        ...prev,
-        [currentAgentId]: [...(prev[currentAgentId] || []), { role: 'assistant', content: data.response }],
-      }))
+      const { jobId } = startData
+      const capturedAgentId = currentAgentId
+
+      // Step 2: poll chat-poll until the background function finishes (max 90 s)
+      const deadline = Date.now() + 90_000
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 2500))
+
+        const pollRes = await fetch(`/.netlify/functions/chat-poll?jobId=${jobId}`)
+        const pollData = await pollRes.json()
+
+        if (pollData.status === 'done') {
+          setConversations(prev => ({
+            ...prev,
+            [capturedAgentId]: [...(prev[capturedAgentId] || []), { role: 'assistant', content: pollData.response }],
+          }))
+          return
+        }
+
+        if (pollData.status === 'error') {
+          throw new Error(pollData.error || 'Something went wrong. Please try again.')
+        }
+      }
+
+      throw new Error('The server took too long to respond. Please try again.')
     } catch (e) {
       setConversations(prev => ({
         ...prev,

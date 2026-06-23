@@ -56,7 +56,11 @@ exports.handler = async (event) => {
       }),
     })
 
-    if (!emailRes.ok) throw new Error('Email delivery failed')
+    if (!emailRes.ok) {
+      const errBody = await emailRes.json().catch(() => ({}))
+      console.error('send-otp Resend error:', emailRes.status, JSON.stringify(errBody))
+      throw new Error('Email delivery failed')
+    }
 
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, token, expiry }) }
   } catch (err) {
