@@ -76,7 +76,7 @@ exports.handler = async (event) => {
     }
 
     const jobId = crypto.randomUUID()
-    const store = getStore({ name: 'chat-jobs', consistency: 'strong' })
+    const store = getStore({ name: 'chat-jobs', consistency: 'strong', siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_AUTH_TOKEN })
 
     await store.setJSON(jobId, {
       status: 'pending',

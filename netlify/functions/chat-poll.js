@@ -16,7 +16,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const store = getStore({ name: 'chat-jobs', consistency: 'strong' })
+    const store = getStore({ name: 'chat-jobs', consistency: 'strong', siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_AUTH_TOKEN })
     const job = await store.get(jobId, { type: 'json' })
 
     if (!job) {

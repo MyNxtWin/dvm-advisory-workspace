@@ -51,7 +51,7 @@ exports.handler = async (event) => {
   const { jobId } = JSON.parse(event.body || '{}')
   if (!jobId) return { statusCode: 400, body: '' }
 
-  const store = getStore({ name: 'chat-jobs', consistency: 'strong' })
+  const store = getStore({ name: 'chat-jobs', consistency: 'strong', siteID: process.env.NETLIFY_SITE_ID, token: process.env.NETLIFY_AUTH_TOKEN })
 
   try {
     const job = await store.get(jobId, { type: 'json' })
