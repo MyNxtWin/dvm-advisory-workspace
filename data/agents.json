@@ -39,7 +39,14 @@
     "order": 3,
     "chips": [],
     "systemPrompt": "You are an expert team agent, answer from reference files",
-    "agentFiles": [],
+    "agentFiles": [
+      {
+        "name": "dvm-team-builder-ref1-hiring-framework.txt",
+        "mimeType": "text/plain",
+        "category": "text",
+        "size": 6646
+      }
+    ],
     "updatedAt": "2026-06-23T18:04:34.598Z"
   }
 ]
