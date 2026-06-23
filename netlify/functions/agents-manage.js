@@ -20,7 +20,11 @@ function repoUrl(filePath) {
   return `${GITHUB_API}/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/contents/${filePath}`
 }
 
-// ── agents.json helpers ────────────────────────────────────────────────────
+function agentFilePath(agentId, filename) {
+  return `data/agent-files/${agentId}/${filename}`
+}
+
+// ── agents.json ─────────────────────────────────────────────────────────────
 
 async function fetchAgentsFile() {
   const res = await fetch(repoUrl(process.env.AGENTS_FILE_PATH), { headers: ghHeaders() })
@@ -32,34 +36,6 @@ async function fetchAgentsFile() {
   }
 }
 
-async function commitAgentsFile(agents, sha, message) {
-  const res = await fetch(repoUrl(process.env.AGENTS_FILE_PATH), {
-    method: 'PUT',
-    headers: ghHeaders(),
-    body: JSON.stringify({
-      message,
-      sha,
-      content: Buffer.from(JSON.stringify(agents, null, 2) + '\n').toString('base64'),
-    }),
-  })
-  if (!res.ok) throw new Error('Could not save agents to storage.')
-}
-
-// ── agent file helpers — each file is its own path in the repo ─────────────
-
-function agentFilePath(agentId, filename) {
-  return `data/agent-files/${agentId}/${filename}`
-}
-
-// Returns the GitHub SHA of a single file, or null if it doesn't exist
-async function getGithubFileSha(path) {
-  const res = await fetch(repoUrl(path), { headers: ghHeaders() })
-  if (res.status === 404) return null
-  if (!res.ok) throw new Error('Could not check file on GitHub.')
-  const data = await res.json()
-  return data.sha
-}
-
 // Lists all files in data/agent-files/{agentId}/ — returns [] if folder doesn't exist
 async function listAgentFolder(agentId) {
   const res = await fetch(repoUrl(`data/agent-files/${agentId}`), { headers: ghHeaders() })
@@ -69,7 +45,66 @@ async function listAgentFolder(agentId) {
   return Array.isArray(data) ? data.filter(f => f.type === 'file') : []
 }
 
-// ── handler ────────────────────────────────────────────────────────────────
+// ── Batch commit via Git Data API ────────────────────────────────────────────
+// changes: array of { path, content, encoding? } for additions
+//                 or { path, delete: true } for removals (sha:null = no-op if missing)
+async function batchCommit(changes, message) {
+  const branch = 'main'
+  const baseUrl = `${GITHUB_API}/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}`
+
+  // Get current HEAD SHA
+  const refRes = await fetch(`${baseUrl}/git/ref/heads/${branch}`, { headers: ghHeaders() })
+  if (!refRes.ok) throw new Error('Could not get branch ref.')
+  const headSha = (await refRes.json()).object.sha
+
+  // Get the base tree SHA from that commit
+  const commitRes = await fetch(`${baseUrl}/git/commits/${headSha}`, { headers: ghHeaders() })
+  if (!commitRes.ok) throw new Error('Could not get commit.')
+  const baseTreeSha = (await commitRes.json()).tree.sha
+
+  // Create blobs for additions in parallel, build tree entries for deletions
+  const treeEntries = await Promise.all(changes.map(async (c) => {
+    if (c.delete) {
+      return { path: c.path, mode: '100644', type: 'blob', sha: null }
+    }
+    const b64 = c.encoding === 'base64' ? c.content : Buffer.from(c.content, 'utf8').toString('base64')
+    const blobRes = await fetch(`${baseUrl}/git/blobs`, {
+      method: 'POST',
+      headers: ghHeaders(),
+      body: JSON.stringify({ content: b64, encoding: 'base64' }),
+    })
+    if (!blobRes.ok) throw new Error(`Could not create blob for ${c.path}.`)
+    return { path: c.path, mode: '100644', type: 'blob', sha: (await blobRes.json()).sha }
+  }))
+
+  // Create new tree on top of base tree
+  const treeRes = await fetch(`${baseUrl}/git/trees`, {
+    method: 'POST',
+    headers: ghHeaders(),
+    body: JSON.stringify({ base_tree: baseTreeSha, tree: treeEntries }),
+  })
+  if (!treeRes.ok) throw new Error('Could not create tree.')
+  const newTreeSha = (await treeRes.json()).sha
+
+  // Create commit
+  const newCommitRes = await fetch(`${baseUrl}/git/commits`, {
+    method: 'POST',
+    headers: ghHeaders(),
+    body: JSON.stringify({ message, tree: newTreeSha, parents: [headSha] }),
+  })
+  if (!newCommitRes.ok) throw new Error('Could not create commit.')
+  const newCommitSha = (await newCommitRes.json()).sha
+
+  // Advance the branch ref
+  const updateRes = await fetch(`${baseUrl}/git/refs/heads/${branch}`, {
+    method: 'PATCH',
+    headers: ghHeaders(),
+    body: JSON.stringify({ sha: newCommitSha }),
+  })
+  if (!updateRes.ok) throw new Error('Could not update branch ref.')
+}
+
+// ── handler ─────────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
   const cors = corsHeaders(event)
@@ -95,128 +130,52 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ agents }) }
     }
 
-    // ── Upload agent file ────────────────────────────────────────────────
-    if (event.httpMethod === 'POST' && body.action === 'uploadAgentFile') {
-      const { agentId, file } = body
+    // ── Save agent — upsert + file adds + file removals in one commit ────
+    if (event.httpMethod === 'POST' && body.action === 'saveAgent') {
+      const { agent, filesToAdd = [], filesToRemove = [] } = body
 
-      if (!agentId || !AGENT_ID_RE.test(agentId)) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid agentId.' }) }
-      }
-      if (!file?.name || !file?.data || !file?.mimeType || !file?.category || !file?.size) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing file fields.' }) }
-      }
-      if (!VALID_AGENT_FILE_CATEGORIES.has(file.category) || typeof file.data !== 'string' || file.data.length > MAX_AGENT_FILE_DATA) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid file data or type.' }) }
-      }
-
-      const safeName = file.name.replace(/[^a-zA-Z0-9._\-() ]/g, '_').slice(0, 120).trim()
-      if (!safeName) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid filename.' }) }
-
-      // Check current metadata count
-      const { sha: agentsSha, agents } = await fetchAgentsFile()
-      const idx = agents.findIndex(a => a.id === agentId)
-      if (idx < 0) return { statusCode: 400, headers, body: JSON.stringify({ error: 'Agent not found.' }) }
-
-      const existingMeta = agents[idx].agentFiles || []
-      if (existingMeta.length >= MAX_AGENT_FILES) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: `Maximum ${MAX_AGENT_FILES} files per agent.` }) }
-      }
-      if (existingMeta.some(f => f.name === safeName)) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'A file with that name already exists.' }) }
-      }
-
-      // Write the actual file to data/agent-files/{agentId}/{safeName}
-      // GitHub always wants base64-encoded content in the API
-      const githubContent = file.category === 'text'
-        ? Buffer.from(file.data, 'utf8').toString('base64')
-        : file.data // already base64
-
-      const existingSha = await getGithubFileSha(agentFilePath(agentId, safeName))
-      const putBody = {
-        message: `agent-files: add ${safeName} to ${agentId}`,
-        content: githubContent,
-      }
-      if (existingSha) putBody.sha = existingSha
-
-      const putRes = await fetch(repoUrl(agentFilePath(agentId, safeName)), {
-        method: 'PUT',
-        headers: ghHeaders(),
-        body: JSON.stringify(putBody),
-      })
-      if (!putRes.ok) {
-        console.error('agents-manage: file upload failed:', await putRes.text())
-        throw new Error('Could not upload file to GitHub.')
-      }
-
-      // Update metadata in agents.json (no file content stored here)
-      agents[idx].agentFiles = [...existingMeta, { name: safeName, mimeType: file.mimeType, category: file.category, size: file.size }]
-      await commitAgentsFile(agents, agentsSha, `agent-files: update metadata for ${agentId}`)
-
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true, name: safeName }) }
-    }
-
-    // ── Remove agent file ────────────────────────────────────────────────
-    if (event.httpMethod === 'POST' && body.action === 'removeAgentFile') {
-      const { agentId, filename } = body
-
-      if (!agentId || !AGENT_ID_RE.test(agentId) || !filename || typeof filename !== 'string') {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid request.' }) }
-      }
-      if (filename !== filename.replace(/[^a-zA-Z0-9._\-() ]/g, '_').slice(0, 120).trim()) {
-        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid filename.' }) }
-      }
-
-      const sha = await getGithubFileSha(agentFilePath(agentId, filename))
-      if (!sha) {
-        return { statusCode: 404, headers, body: JSON.stringify({ error: 'File not found.' }) }
-      }
-
-      // Update metadata FIRST — stale metadata pointing to a missing file causes 404s on download.
-      // An orphaned file in GitHub (if delete below fails) is harmless.
-      const { sha: agentsSha, agents } = await fetchAgentsFile()
-      const idx = agents.findIndex(a => a.id === agentId)
-      if (idx >= 0 && agents[idx].agentFiles) {
-        agents[idx].agentFiles = agents[idx].agentFiles.filter(f => f.name !== filename)
-        await commitAgentsFile(agents, agentsSha, `agent-files: update metadata for ${agentId}`)
-      }
-
-      // Delete the actual file from GitHub
-      const delRes = await fetch(repoUrl(agentFilePath(agentId, filename)), {
-        method: 'DELETE',
-        headers: ghHeaders(),
-        body: JSON.stringify({
-          message: `agent-files: remove ${filename} from ${agentId}`,
-          sha,
-        }),
-      })
-      if (!delRes.ok) {
-        console.error('agents-manage: GitHub file delete failed:', await delRes.text())
-        // Metadata is already clean — orphaned file in GitHub won't be served
-      }
-
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true }) }
-    }
-
-    // ── Upsert agent ─────────────────────────────────────────────────────
-    if (event.httpMethod === 'POST') {
-      const { agent } = body
       if (!agent?.id || !agent?.name || !agent?.systemPrompt) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'id, name, and systemPrompt are required.' }) }
       }
       if (!AGENT_ID_RE.test(agent.id)) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'id must be lowercase alphanumeric with hyphens/underscores only.' }) }
       }
-
       for (const [field, max] of Object.entries(FIELD_LIMITS)) {
         if (agent[field] && String(agent[field]).length > max) {
           return { statusCode: 400, headers, body: JSON.stringify({ error: `${field} exceeds maximum length of ${max} characters.` }) }
         }
       }
+      for (const file of filesToAdd) {
+        if (!file?.name || !file?.data || !file?.mimeType || !file?.category || !file?.size) {
+          return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing file fields.' }) }
+        }
+        if (!VALID_AGENT_FILE_CATEGORIES.has(file.category) || typeof file.data !== 'string' || file.data.length > MAX_AGENT_FILE_DATA) {
+          return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid file data or type.' }) }
+        }
+      }
 
-      const { sha, agents } = await fetchAgentsFile()
-      const existing = agents.findIndex(a => a.id === agent.id)
+      const { agents } = await fetchAgentsFile()
+      const existingIdx = agents.findIndex(a => a.id === agent.id)
 
-      const updated = {
+      // Build new agentFiles metadata: keep existing minus removals, then add new
+      let currentFiles = existingIdx >= 0 ? (agents[existingIdx].agentFiles || []) : []
+      currentFiles = currentFiles.filter(f => !filesToRemove.includes(f.name))
+
+      const sanitizedAdds = filesToAdd.map(f => ({
+        ...f,
+        safeName: f.name.replace(/[^a-zA-Z0-9._\-() ]/g, '_').slice(0, 120).trim(),
+      })).filter(f => f.safeName)
+
+      if (currentFiles.length + sanitizedAdds.length > MAX_AGENT_FILES) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: `Maximum ${MAX_AGENT_FILES} files per agent.` }) }
+      }
+      for (const f of sanitizedAdds) {
+        if (currentFiles.some(e => e.name === f.safeName)) {
+          return { statusCode: 400, headers, body: JSON.stringify({ error: `File "${f.safeName}" already exists on this agent.` }) }
+        }
+      }
+
+      const updatedAgent = {
         id: agent.id,
         name: agent.name,
         shortName: agent.shortName || '',
@@ -226,49 +185,61 @@ exports.handler = async (event) => {
         order: typeof agent.order === 'number' ? agent.order : 99,
         chips: Array.isArray(agent.chips) ? agent.chips.slice(0, 20) : [],
         systemPrompt: agent.systemPrompt,
-        agentFiles: existing >= 0 ? (agents[existing].agentFiles || []) : [],
+        agentFiles: [
+          ...currentFiles,
+          ...sanitizedAdds.map(f => ({ name: f.safeName, mimeType: f.mimeType, category: f.category, size: f.size })),
+        ],
         updatedAt: new Date().toISOString(),
       }
 
-      if (existing >= 0) {
-        agents[existing] = updated
-      } else {
-        agents.push(updated)
+      const newAgents = existingIdx >= 0
+        ? agents.map((a, i) => i === existingIdx ? updatedAgent : a)
+        : [...agents, updatedAgent]
+      newAgents.sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
+
+      // Build all file changes for the single commit
+      const changes = []
+
+      // agents.json
+      changes.push({ path: process.env.AGENTS_FILE_PATH, content: JSON.stringify(newAgents, null, 2) + '\n' })
+
+      // file additions
+      for (const f of sanitizedAdds) {
+        changes.push({
+          path: agentFilePath(agent.id, f.safeName),
+          content: f.category === 'text' ? Buffer.from(f.data, 'utf8').toString('base64') : f.data,
+          encoding: 'base64',
+        })
       }
-      agents.sort((a, b) => (a.order ?? 99) - (b.order ?? 99))
-      await commitAgentsFile(agents, sha, `agent: ${existing >= 0 ? 'update' : 'add'} ${agent.id}`)
+
+      // file removals (sha:null = no-op if already missing, safe)
+      for (const filename of filesToRemove) {
+        changes.push({ path: agentFilePath(agent.id, filename), delete: true })
+      }
+
+      const isNew = existingIdx < 0
+      await batchCommit(changes, `agent: ${isNew ? 'add' : 'update'} ${agent.id}`)
+
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) }
     }
 
-    // ── Delete agent ─────────────────────────────────────────────────────
+    // ── Delete agent + all its files in one commit ───────────────────────
     if (event.httpMethod === 'DELETE') {
       const { agentId } = body
       if (!agentId || !AGENT_ID_RE.test(agentId)) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Valid agentId required.' }) }
       }
 
-      const { sha, agents } = await fetchAgentsFile()
+      const { agents } = await fetchAgentsFile()
       const filtered = agents.filter(a => a.id !== agentId)
-      await commitAgentsFile(filtered, sha, `agent: remove ${agentId}`)
+      const folderFiles = await listAgentFolder(agentId)
 
-      // Best-effort: delete all files in data/agent-files/{agentId}/ — agent is already gone
-      // from agents.json so orphaned files can't be accessed even if cleanup partially fails.
-      try {
-        const folderFiles = await listAgentFolder(agentId)
-        for (const f of folderFiles) {
-          const res = await fetch(repoUrl(f.path), {
-            method: 'DELETE',
-            headers: ghHeaders(),
-            body: JSON.stringify({
-              message: `agent-files: remove ${f.name} (agent ${agentId} deleted)`,
-              sha: f.sha,
-            }),
-          })
-          if (!res.ok) console.error(`agents-manage: failed to delete ${f.name}:`, await res.text())
-        }
-      } catch (e) {
-        console.error('agents-manage: folder cleanup failed:', e.message)
-      }
+      const changes = [
+        { path: process.env.AGENTS_FILE_PATH, content: JSON.stringify(filtered, null, 2) + '\n' },
+        ...folderFiles.map(f => ({ path: f.path, delete: true })),
+      ]
+
+      await batchCommit(changes, `agent: remove ${agentId}`)
 
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) }
     }
