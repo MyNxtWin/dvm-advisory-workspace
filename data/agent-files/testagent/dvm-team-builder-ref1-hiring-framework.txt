@@ -1,0 +1,163 @@
+DVM ADVISORY — TEAM BUILDING REFERENCE
+HIRING FRAMEWORK FOR PROFESSIONAL SERVICES FIRMS
+=================================================
+
+SOURCE: DVM Internal HR Practice Guide v2.1
+
+---
+
+SECTION 1: ROLE DEFINITION FRAMEWORK
+
+For CS/CA/Legal Advisory Firms, roles fall into four tiers:
+
+TIER 1 — PARTNER / DIRECTOR LEVEL
+- Minimum qualification: ACS/FCS or FCA with 10+ years PQE
+- Responsibilities: Client relationships, signing authority, practice leadership
+- KPIs: Billable hours (target 1,200/year), client retention rate, new mandate wins
+- Compensation band: ₹40L–₹1.2 Cr CTC depending on city and specialisation
+- Notice period: 3–6 months (non-negotiable for client continuity)
+
+TIER 2 — MANAGER / ASSOCIATE LEVEL
+- Qualification: ACS/ACA/LLB with 3–7 years experience
+- Responsibilities: File management, client deliverables, junior team oversight
+- KPIs: File closure rate, deadline adherence, client escalations, review pass rate
+- Compensation band: ₹8L–₹25L CTC
+- Notice period: 60 days standard
+
+TIER 3 — EXECUTIVE / ASSOCIATE LEVEL
+- Qualification: CS/CA Inter or Final (attempting), BCom/LLB
+- Responsibilities: Documentation, filings, research, data management
+- KPIs: Turnaround time, error rate, MCA/SEBI portal proficiency
+- Compensation band: ₹3L–₹8L CTC
+- Notice period: 30 days
+
+TIER 4 — TRAINEE / ARTICLESHIP
+- Qualification: CS/CA enrolled student
+- Stipend: ₹3,000–₹8,000/month (ICSI prescribed minimum: ₹2,000 for first year)
+- Duration: 15 months (ICSI) or 3 years (ICAI articleship)
+- Conversion rate target: 60% trainees offered full-time post qualification
+
+---
+
+SECTION 2: INTERVIEW STRUCTURE — PROFESSIONAL SERVICES
+
+ROUND 1 — TECHNICAL SCREENING (30 mins, HR/Senior Executive)
+- Domain knowledge test: 15 MCQs (Companies Act, SEBI, GST basics)
+- File drafting sample: given one scenario, produce a notice or resolution draft
+- Portal familiarity: MCA21, SEBI SCORES, TRACES, GST portal
+
+ROUND 2 — CASE STUDY (45 mins, Manager level)
+- Scenario: "A listed company's AGM date is 15 September. The financial year ended 31 March. Auditor's report has a qualification. Draft the audit committee agenda, list the LODR filings required, and identify three compliance risks."
+- Evaluation: Process thinking, regulatory accuracy, communication clarity
+
+ROUND 3 — PARTNER INTERVIEW (30 mins, cultural fit + client-facing readiness)
+- Situational questions on deadline pressure, client communication, error correction
+- Assessment: maturity, ownership mindset, long-term commitment signal
+
+BACKGROUND VERIFICATION CHECKLIST:
+□ Educational certificates (ICSI/ICAI membership number verified online)
+□ Previous employment — offer letter + relieving letter
+□ Reference call: 1 professional + 1 academic
+□ Address verification (Aadhaar/Passport)
+□ Criminal record check (for roles with signing authority)
+
+---
+
+SECTION 3: ONBOARDING CHECKLIST (Day 1–30)
+
+DAY 1
+□ Laptop/device issued; email ID created; system access provisioned
+□ NDA and confidentiality agreement signed
+□ Introduction to team, buddy assigned
+□ Overview of active client roster (under NDA)
+
+WEEK 1
+□ Shadowing senior on 2–3 live files
+□ Read firm's standard operating procedures (SOPs)
+□ Practice portal access: MCA21, SEBI SCORES, BSE/NSE listing portal, TRACES
+□ 1-on-1 with direct manager: goals for first 90 days set
+
+WEEK 2–4
+□ First independent file assigned (low-risk, supervised)
+□ Mid-onboarding check-in with HR
+□ Compliance calendar for current month explained
+□ Introduction to firm's billing and time-tracking system
+
+DAY 30
+□ 30-day review: self-assessment + manager assessment
+□ Confirm notice period, leave policy, insurance enrollment
+
+---
+
+SECTION 4: PERFORMANCE MANAGEMENT FRAMEWORK
+
+QUARTERLY REVIEW PARAMETERS (for Executives and above):
+1. Deadline adherence — % of files closed on or before due date (target: 95%)
+2. Error rate — client complaints or rework requests / total files (target: <3%)
+3. Learning — certifications attempted, CPE hours, internal training
+4. Team contribution — peer feedback score (1–5 scale)
+5. Client-readiness — partner assessment of client-facing skill progression
+
+ANNUAL APPRAISAL CYCLE:
+- Self-assessment submitted by March 31
+- Manager assessment by April 15
+- Partner calibration session: April 20–25
+- Letters issued: May 1
+- Increment effective: April 1 (backdated)
+
+PROMOTION CRITERIA:
+- Tier 3 → Tier 2: Minimum 2 years, ACS/ACA qualification obtained, avg quarterly score ≥4.0/5.0
+- Tier 2 → Tier 1: Minimum 4 years at Tier 2, client ownership demonstrated, partner recommendation
+
+PIP (PERFORMANCE IMPROVEMENT PLAN):
+- Triggered if two consecutive quarterly scores below 2.5/5.0
+- Duration: 60 days
+- Success criteria defined upfront in writing
+- Exit options: reassignment, mutual separation, termination per appointment letter terms
+
+---
+
+SECTION 5: RETENTION TOOLKIT
+
+MONETARY
+- Retention bonus: 10–15% of annual CTC, payable after 2-year lock-in from date of issue
+- ESOP: Applicable to Tier 2 and above; typical vesting: 4-year cliff-vest (25% per year)
+- Performance bonus: quarterly, capped at 20% of base
+
+NON-MONETARY
+- Exam support: paid study leave (5 days per attempt), exam fee reimbursement
+- Conference sponsorship: 1 industry conference per year for Tier 2+
+- Flexible work: hybrid model (3 days office mandatory for Tier 3, 2 days for Tier 2+)
+- Title progression: mid-year title upgrade possible without salary change (recognition signal)
+
+EXIT INTERVIEW PROTOCOL:
+- Conducted by HR, not direct manager
+- Structured questionnaire: reason for leaving, salary, growth, culture, workload
+- Data aggregated quarterly to identify attrition patterns
+- Feedback shared with partners anonymously in quarterly HR review
+
+---
+
+SECTION 6: TEAM STRUCTURE MODELS FOR CS/CA FIRMS
+
+MODEL A — FUNCTIONAL PODS (suitable for 10–30 staff)
+- Each pod: 1 Manager + 2 Executives + 1 Trainee
+- Pod specialisation: listed/unlisted, transaction, tax
+- Advantage: deep expertise, clear ownership
+- Risk: siloing; cross-training required quarterly
+
+MODEL B — CLIENT-ALIGNED TEAMS (suitable for 30+ staff)
+- Each client assigned a primary Manager + backup
+- Executives rotate across clients
+- Advantage: strong client relationships
+- Risk: key-person dependency; mitigate with documented knowledge base
+
+MODEL C — HYBRID (recommended for growth phase)
+- Core specialisation pods + shared execution pool
+- Execution pool: junior executives rotated based on load
+- Advantage: flexibility + specialisation
+- Risk: requires strong project management discipline
+
+---
+
+END OF DOCUMENT
